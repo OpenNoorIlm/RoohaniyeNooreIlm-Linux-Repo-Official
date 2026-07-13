@@ -1,0 +1,6 @@
+{
+  "manifest_version": 1,
+  "latest_version": "0.1.0",
+  "release_notes": "Initial development build of RoohaniyeNooreIlmLinux. This is currently a source build of the kiosk shell (roohaniye-shell) run on top of a standard Linux install, not yet a packaged, flashable OS image — so there is no downloadable update artifact for any architecture yet. This manifest exists so the Updates screen has something real to report instead of a 404.",
+  "arch": {}
+}

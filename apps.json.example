@@ -1,0 +1,19 @@
+{
+  "manifest_version": 1,
+  "apps": [
+    {
+      "id": "vlc",
+      "name": "VLC Media Player",
+      "description": "Open source media player",
+      "license": "GPL-2.0",
+      "version": "3.0.21",
+      "arch": {
+        "x86_64": {
+          "url": "https://download.videolan.org/pub/videolan/vlc/3.0.21/vlc-3.0.21-amd64.deb",
+          "sha256": "e617a7267a7e95f3d960359ce65409b9551d3043b6de4b51c41c406b171f954b",
+          "type": "deb"
+        }
+      }
+    }
+  ]
+}

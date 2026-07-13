@@ -1,0 +1,25 @@
+# --- Large / stale data, never commit ---
+quran_audio_embedded.db
+quran_audio_embedded.verses_backup.json
+
+# --- Build artifacts ---
+shell-src/build/
+*.o
+*.obj
+moc_*
+qrc_*
+Makefile
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# --- Editor / OS cruft ---
+*.swp
+*~
+.vscode/
+.idea/
+.DS_Store
+
+# --- Real device data / secrets, never commit ---
+*.ini

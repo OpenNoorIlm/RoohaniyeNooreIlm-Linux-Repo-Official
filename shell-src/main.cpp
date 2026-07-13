@@ -1,0 +1,94 @@
+// RoohaniyeNooreIlmLinux shell
+// Entry point: runs as the ONLY GUI process on the machine (eglfs, no X11/Wayland
+// compositor needed). Registers C++ backends to QML, then loads Main.qml.
+
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include "appcenter.h"
+#include "quranbackend.h"
+#include "audiobackend.h"
+#include "wifibackend.h"
+#include "powerbackend.h"
+#include "storagebackend.h"
+#include "dbconnectorbackend.h"
+#include "updatebackend.h"
+#include "prayerbackend.h"
+
+int main(int argc, char *argv[])
+{
+    // Force eglfs only if the platform wasn't already chosen by the
+    // environment (lets developers override with QT_QPA_PLATFORM=xcb
+    // for windowed testing during development).
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+        qputenv("QT_QPA_PLATFORM", "eglfs");
+    }
+
+    QGuiApplication app(argc, argv);
+    app.setApplicationName("RoohaniyeNooreIlmLinux Shell");
+
+    // IMPORTANT: these must be declared BEFORE QQmlApplicationEngine.
+    // C++ destroys local variables in reverse declaration order, so if
+    // engine were declared first, it would be destroyed LAST — after
+    // these backends were already gone. QML item teardown (which fires
+    // Component.onDestruction, e.g. QuranView saving reading progress)
+    // only happens when the engine itself is destroyed, so any QML code
+    // running during shutdown would be calling into deleted C++ objects.
+    // Declaring backends first means they outlive the engine, so QML
+    // teardown always has valid objects to call into.
+    AppCenter appCenter;
+    QuranBackend quranBackend;
+    // Declared after QuranBackend (so it's destroyed BEFORE QuranBackend,
+    // per the same reverse-destruction-order reasoning as above -
+    // AudioBackend holds a raw QuranBackend* and must stop using it
+    // before QuranBackend itself goes away).
+    AudioBackend audioBackend(&quranBackend);
+    WifiBackend wifiBackend;
+    PowerBackend powerBackend;
+    StorageBackend storageBackend;
+    // Holds a raw QuranBackend* (to hot-swap the audio/hadith attachments
+    // it owns) - declared after QuranBackend for the same reverse-
+    // destruction-order reasoning as AudioBackend above.
+    DbConnectorBackend dbConnectorBackend(&quranBackend);
+    // No cross-backend dependencies, order doesn't matter for this one.
+    UpdateBackend updateBackend;
+    // Also no cross-backend dependencies (self-contained: location +
+    // calc settings persisted via its own QSettings, no live sensors).
+    PrayerBackend prayerBackend;
+
+    QQmlApplicationEngine engine;
+
+    // Open before any QML is loaded — QML property bindings can evaluate
+    // as soon as a component is created, which can race ahead of a
+    // Component.onCompleted handler inside the QML itself.
+    // quran_text.db (verses, small) and quran_audio.db (audio blobs,
+    // tens of GB) used to be one combined quran_audio_embedded.db file -
+    // split via scripts/split_quran_db.py so hot-path text queries never
+    // touch the huge audio file. See quranbackend.h for how the two are
+    // joined at runtime (ATTACH DATABASE).
+    quranBackend.openDatabases(
+        "/opt/roohaniye/data/quran_text.db",
+        "/opt/roohaniye/data/quran_audio.db",
+        "/opt/roohaniye/data/hadiths.db"
+    );
+
+    engine.rootContext()->setContextProperty("appCenter", &appCenter);
+    engine.rootContext()->setContextProperty("quranBackend", &quranBackend);
+    engine.rootContext()->setContextProperty("audioBackend", &audioBackend);
+    engine.rootContext()->setContextProperty("wifiBackend", &wifiBackend);
+    engine.rootContext()->setContextProperty("powerBackend", &powerBackend);
+    engine.rootContext()->setContextProperty("storageBackend", &storageBackend);
+    engine.rootContext()->setContextProperty("dbConnectorBackend", &dbConnectorBackend);
+    engine.rootContext()->setContextProperty("updateBackend", &updateBackend);
+    engine.rootContext()->setContextProperty("prayerBackend", &prayerBackend);
+
+    const QUrl url(QStringLiteral("qrc:/qml/Main.qml"));
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
+                      &app, [url](QObject *obj, const QUrl &objUrl) {
+                          if (!obj && url == objUrl)
+                              QCoreApplication::exit(-1);
+                      }, Qt::QueuedConnection);
+    engine.load(url);
+
+    return app.exec();
+}

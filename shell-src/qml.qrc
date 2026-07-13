@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/Main.qml</file>
+        <file>qml/SplashScreen.qml</file>
+        <file>qml/HomeScreen.qml</file>
+        <file>qml/AppCenter.qml</file>
+        <file>qml/QuranView.qml</file>
+        <file>qml/QuranMenu.qml</file>
+        <file>qml/AboutQuran.qml</file>
+        <file>qml/SurahPicker.qml</file>
+        <file>qml/JuzPicker.qml</file>
+        <file>qml/ReciterPicker.qml</file>
+        <file>qml/HadithView.qml</file>
+        <file>qml/SettingsView.qml</file>
+        <file>qml/DatabaseConnector.qml</file>
+        <file>qml/UpdatesView.qml</file>
+        <file>qml/PrayerTimesView.qml</file>
+        <file>qml/QiblaView.qml</file>
+        <file>qml/LocationPicker.qml</file>
+    </qresource>
+</RCC>

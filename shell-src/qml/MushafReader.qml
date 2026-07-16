@@ -31,11 +31,12 @@ Rectangle {
         // Keep whatever zoom level the reader is at across a page turn -
         // resetting to fit-to-screen every turn was surprising (you'd
         // zoom in to read a line, flip the page, and get thrown back out
-        // to full zoom-out). Only the scroll position snaps back to the
-        // top-left, since the old pan offset doesn't mean anything on a
-        // new page image.
-        flick.contentX = 0
-        flick.contentY = 0
+        // to full zoom-out). The scroll position re-centers rather than
+        // snapping to the top-left corner, since the old pan offset
+        // doesn't mean anything on a new page image and landing in a
+        // corner every turn was disorienting when zoomed in.
+        flick.contentX = Math.max(0, (flick.contentWidth - flick.width) / 2)
+        flick.contentY = Math.max(0, (flick.contentHeight - flick.height) / 2)
         var p = mushafBackend.pageImagePath(mushafName, currentPage)
         imagePath = p !== "" ? "file://" + p : ""
     }
@@ -220,14 +221,34 @@ Rectangle {
                         }
                     }
                 }
+            }
 
-                // Single owner of all pointer/wheel input for the reader:
-                // Ctrl+scroll zooms, Shift+scroll pans left/right, plain
-                // scroll pans up/down, click-drag pans, and double-click
-                // toggles zoom. Keeping this in one MouseArea (instead of
-                // splitting it across WheelHandler/PinchArea/Flickable like
-                // before) means there's nothing left for events to get
-                // stolen by.
+            // Single owner of all pointer/touch/wheel input for the reader,
+            // sitting ON TOP of the Flickable as a sibling - deliberately
+            // NOT declared inside it. Anything declared inside a Flickable
+            // gets auto-reparented into its scrolling contentItem, so a
+            // MouseArea in there reports mouse.x/y in a coordinate frame
+            // that itself shifts every time we write to contentX/contentY.
+            // That was the actual cause of drag-panning (and shift+scroll,
+            // and the ctrl+scroll zoom-anchor point) glitching: each event
+            // fed back into the coordinates of the next one. Living outside
+            // the Flickable, this area's coordinates stay fixed to the
+            // viewport, so plain dx/dy math against flick.contentX/Y works.
+            //
+            // PinchArea wraps the MouseArea to add two-finger pinch-to-zoom;
+            // a single touch point passes straight through PinchArea to the
+            // MouseArea underneath, so one-finger drag-to-pan and
+            // double-tap-to-zoom work on touch the same as with a mouse.
+            PinchArea {
+                id: pinchZoomArea
+                anchors.fill: flick
+                pinch.target: null // zoom is driven manually via setZoomAt
+
+                onPinchUpdated: (pinch) => {
+                    zoomArea.setZoomAt(zoomArea.zoom * (pinch.scale / pinch.previousScale),
+                                        pinch.center.x, pinch.center.y)
+                }
+
                 MouseArea {
                     id: interactionArea
                     anchors.fill: parent

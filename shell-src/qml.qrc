@@ -11,11 +11,37 @@
         <file>qml/JuzPicker.qml</file>
         <file>qml/ReciterPicker.qml</file>
         <file>qml/HadithView.qml</file>
+        <file>qml/HadithMenu.qml</file>
+        <file>qml/HadithTopicPicker.qml</file>
         <file>qml/SettingsView.qml</file>
         <file>qml/DatabaseConnector.qml</file>
         <file>qml/UpdatesView.qml</file>
         <file>qml/PrayerTimesView.qml</file>
         <file>qml/QiblaView.qml</file>
         <file>qml/LocationPicker.qml</file>
+        <file>qml/InstallerWizard.qml</file>
+        <file>qml/RemindersView.qml</file>
+        <file>qml/LockScreen.qml</file>
+        <file>qml/VirtualKeyboard.qml</file>
+        <file>assets/audio/SciFi-MouseClick.wav</file>
+        <file>assets/audio/mouseClick.wav</file>
+        <file>assets/audio/SelectBtnClick.wav</file>
+        <file>assets/audio/SleecingSound.wav</file>
+        <file>assets/audio/ilm_noor_hai_ringtone.mp3</file>
+        <file>assets/images/brand_icon.png</file>
+        <file>assets/images/splash_background.png</file>
+        <file>assets/images/home_background.png</file>
+        <file>assets/images/quran_icon.png</file>
+        <file>assets/images/hadith_icon.png</file>
+        <file>assets/images/prayertimes_icon.png</file>
+        <file>assets/images/qibla_icon.png</file>
+        <file>assets/images/appcenter_icon.png</file>
+        <file>assets/images/settings_icon.png</file>
+        <file>assets/images/updates_icon.png</file>
+        <file>assets/images/reminders_icon.png</file>
+        <file>assets/images/dbconnector_icon.png</file>
+        <file>assets/images/installer_icon.png</file>
+        <file>assets/images/brightness_icon.png</file>
+        <file>assets/images/volume_icon.png</file>
     </qresource>
 </RCC>

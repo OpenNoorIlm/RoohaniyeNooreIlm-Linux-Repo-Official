@@ -68,7 +68,7 @@ Rectangle {
                 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: { selectionMode = !selectionMode; selectedJuzs = [] }
+                    onClicked: { root.sounds.select(); selectionMode = !selectionMode; selectedJuzs = [] }
                 }
             }
         }
@@ -115,7 +115,7 @@ Rectangle {
                         id: juzMouse
                         anchors.fill: parent
                         onClicked: {
-                            if (picker.selectionMode) picker.toggleSelected(index + 1)
+                            if (picker.selectionMode) { root.sounds.itemSelecting(); picker.toggleSelected(index + 1) }
                             else picker.picked(index + 1)
                         }
                     }

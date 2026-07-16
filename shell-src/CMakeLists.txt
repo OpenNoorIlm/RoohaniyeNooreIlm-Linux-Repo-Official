@@ -28,6 +28,18 @@ add_executable(roohaniye-shell
     updatebackend.h
     prayerbackend.cpp
     prayerbackend.h
+    installerbackend.cpp
+    installerbackend.h
+    reminderbackend.cpp
+    reminderbackend.h
+    authbackend.cpp
+    authbackend.h
+    brightnessbackend.cpp
+    brightnessbackend.h
+    themebackend.cpp
+    themebackend.h
+    volumebackend.cpp
+    volumebackend.h
     qml.qrc
 )
 

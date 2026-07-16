@@ -254,7 +254,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: { saveCurrentProgress(); root.currentView = "home" } }
+                MouseArea { anchors.fill: parent; onClicked: { saveCurrentProgress(); audioBackend.stop(); root.goBack() } }
             }
 
             Rectangle {
@@ -375,7 +375,7 @@ Rectangle {
                         anchors.fill: parent
                         z: -1
                         enabled: ayahSelectionMode
-                        onClicked: view.toggleAyahSelected(modelData.surah, modelData.ayah)
+                        onClicked: { root.sounds.itemSelecting(); view.toggleAyahSelected(modelData.surah, modelData.ayah) }
                     }
 
                     ColumnLayout {

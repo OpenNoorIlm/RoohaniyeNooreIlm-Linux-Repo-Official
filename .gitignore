@@ -1,6 +1,13 @@
+# --- Build output — regenerate via build.md, never commit ---
+live-build/
+*.iso
+
 # --- Large / stale data, never commit ---
 quran_audio_embedded.db
 quran_audio_embedded.verses_backup.json
+quran_audio.db
+quran_text.db
+hadiths.db
 
 # --- Build artifacts ---
 shell-src/build/
@@ -23,3 +30,8 @@ compile_commands.json
 
 # --- Real device data / secrets, never commit ---
 *.ini
+
+# --- Logs / IDE state ---
+build.log
+buildsh.log
+shell-src/.qtcreator/

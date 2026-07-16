@@ -75,7 +75,7 @@ Rectangle {
                 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: { selectionMode = !selectionMode; selectedSurahs = [] }
+                    onClicked: { root.sounds.select(); selectionMode = !selectionMode; selectedSurahs = [] }
                 }
             }
         }
@@ -159,7 +159,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        if (picker.selectionMode) picker.toggleSelected(modelData.surah)
+                        if (picker.selectionMode) { root.sounds.itemSelecting(); picker.toggleSelected(modelData.surah) }
                         else picker.picked(modelData.surah, 1)
                     }
                 }

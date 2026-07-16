@@ -35,6 +35,20 @@ static const ReciterMeta kReciterMeta[] = {
     {"ar.shaatree",                 "Abu Bakr Ash-Shatri",      "Murattal"},
 };
 
+// book -> display name for the two hadith collections actually in the
+// db. Falls back to the raw book string (title-cased) for anything else,
+// so an imported db with a different collection still works, just
+// without a nicer display name.
+static QString hadithBookDisplayName(const QString &book)
+{
+    if (book == "bukhari") return QStringLiteral("Sahih al-Bukhari");
+    if (book == "muslim") return QStringLiteral("Sahih Muslim");
+    if (book.isEmpty()) return book;
+    QString out = book;
+    out[0] = out[0].toUpper();
+    return out;
+}
+
 struct SurahMeta {
     const char *transliteration;
     const char *arabic;
@@ -225,7 +239,7 @@ bool QuranBackend::openDatabases(const QString &quranTextDbPath,
     bool quranOk = m_quranDb.open();
     if (!quranOk) {
         qWarning() << "Failed to open Quran text DB:" << m_quranDb.lastError().text();
-    } else {
+    } else if (QFile::exists(effectiveAudioPath)) {
         // Attach the (huge) audio db onto the same connection so existing
         // verses<->audio_files joins keep working, just qualified with
         // "audiodb." - see the class comment in quranbackend.h. Attached
@@ -235,9 +249,24 @@ bool QuranBackend::openDatabases(const QString &quranTextDbPath,
         attachQ.prepare("ATTACH DATABASE ? AS audiodb");
         attachQ.addBindValue(effectiveAudioPath);
         if (!attachQ.exec()) {
-            qWarning() << "Failed to attach Quran audio DB:" << attachQ.lastError().text();
-            quranOk = false;
+            // Audio DB present but failed to attach (corrupt/wrong format)
+            // - genuinely a problem, but still don't take verse reading
+            // down with it. Log loudly and continue text-only.
+            qWarning() << "Failed to attach Quran audio DB (text reading still works):" << attachQ.lastError().text();
+            m_audioDbAttached = false;
+        } else {
+            m_audioDbAttached = true;
         }
+    } else {
+        // Deliberately NOT a failure condition: the "lite" ISO variant
+        // ships without quran_audio.db by design (see live-build/README.md),
+        // relying on the Database Connector app to import it later. Verse
+        // text/navigation/hadith all work fine without it; only audio
+        // playback/reciterList() are unavailable until an import happens,
+        // and those already fail gracefully per-call (empty list / no-op)
+        // rather than needing this attach to have succeeded.
+        qWarning() << "Quran audio DB not present (expected for the lite build) - text reading still works, import via Database Connector to enable audio.";
+        m_audioDbAttached = false;
     }
 
     m_hadithDb = QSqlDatabase::addDatabase("QSQLITE", "hadith_conn");
@@ -384,7 +413,7 @@ QVariantMap QuranBackend::surahInfo(int surah) const
 
 QString QuranBackend::audioBase64(int surah, int ayah, const QString &reciterId) const
 {
-    if (!m_quranDb.isOpen()) return {};
+    if (!m_quranDb.isOpen() || !m_audioDbAttached) return {};
 
     QSqlQuery q(m_quranDb);
     q.prepare("SELECT audio_data FROM audiodb.audio_files af "
@@ -403,6 +432,8 @@ namespace {
 const char *kVerseCols =
     "text_uthmani, text_sahih, text_kanzuliman, text_jalalayn, juz, page, "
     "manzil, ruku, hizb_quarter, sajda, sajda_obligatory, surah, ayah";
+
+const char *kHadithCols = "id, book, hadith_num, topic, english, urdu, arabic";
 }
 
 QVariantMap QuranBackend::rowToVerseMap(QSqlQuery &q) const
@@ -422,6 +453,20 @@ QVariantMap QuranBackend::rowToVerseMap(QSqlQuery &q) const
     result["surah"] = q.value(11).toInt();
     result["ayah"] = q.value(12).toInt();
     return result;
+}
+
+QVariantMap QuranBackend::rowToHadithMap(QSqlQuery &q) const
+{
+    QVariantMap m;
+    m["id"] = q.value(0).toInt();
+    m["book"] = q.value(1).toString();
+    m["bookDisplayName"] = hadithBookDisplayName(q.value(1).toString());
+    m["hadithNum"] = q.value(2).toString();
+    m["topic"] = q.value(3).toString();
+    m["english"] = q.value(4).toString();
+    m["urdu"] = q.value(5).toString();
+    m["arabic"] = q.value(6).toString();
+    return m;
 }
 
 QVariantList QuranBackend::versesInSurah(int surah) const
@@ -634,7 +679,7 @@ QVariantMap QuranBackend::previousVerse(int surah, int ayah) const
 QVariantList QuranBackend::reciterList() const
 {
     QVariantList out;
-    if (!m_quranDb.isOpen()) return out;
+    if (!m_quranDb.isOpen() || !m_audioDbAttached) return out;
 
     QSqlQuery q(m_quranDb);
     if (!q.exec("SELECT DISTINCT reciter_id FROM audiodb.audio_files ORDER BY reciter_id")) {
@@ -699,7 +744,10 @@ QVariantList QuranBackend::versesForSelection(const QVariantList &items) const
 
 QString QuranBackend::audioFilePath(int surah, int ayah, const QString &reciterId) const
 {
-    if (!m_quranDb.isOpen()) return {};
+    if (!m_quranDb.isOpen() || !m_audioDbAttached) {
+        qWarning() << "audioFilePath: audio database not attached (lite install?) — skipping";
+        return {};
+    }
 
     const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
                               + "/roohaniye-audio";
@@ -801,4 +849,184 @@ QVariantMap QuranBackend::randomHadith() const
         qWarning() << "randomHadith: query returned no rows";
     }
     return result;
+}
+
+QVariantList QuranBackend::hadithBookList() const
+{
+    QVariantList out;
+    if (!m_hadithDb.isOpen()) return out;
+
+    QSqlQuery q(m_hadithDb);
+    if (!q.exec("SELECT book, COUNT(*) FROM hadiths GROUP BY book ORDER BY MIN(id)")) {
+        qWarning() << "hadithBookList failed:" << q.lastError().text();
+        return out;
+    }
+    while (q.next()) {
+        QVariantMap m;
+        const QString book = q.value(0).toString();
+        m["book"] = book;
+        m["displayName"] = hadithBookDisplayName(book);
+        m["count"] = q.value(1).toInt();
+        out.append(m);
+    }
+    return out;
+}
+
+QVariantList QuranBackend::hadithTopics(const QString &book) const
+{
+    QVariantList out;
+    if (!m_hadithDb.isOpen()) return out;
+
+    QSqlQuery q(m_hadithDb);
+    // Ordered by MIN(id) so topics come back in the collection's original
+    // chapter order (e.g. Bukhari's "Revelation" first), not alphabetical.
+    q.prepare("SELECT topic, COUNT(*) FROM hadiths WHERE book = ? "
+              "GROUP BY topic ORDER BY MIN(id)");
+    q.addBindValue(book);
+    if (!q.exec()) {
+        qWarning() << "hadithTopics failed:" << q.lastError().text();
+        return out;
+    }
+    while (q.next()) {
+        QVariantMap m;
+        m["topic"] = q.value(0).toString();
+        m["count"] = q.value(1).toInt();
+        out.append(m);
+    }
+    return out;
+}
+
+QVariantList QuranBackend::hadithsByTopic(const QString &book, const QString &topic) const
+{
+    QVariantList out;
+    if (!m_hadithDb.isOpen()) return out;
+
+    QSqlQuery q(m_hadithDb);
+    q.prepare(QString("SELECT %1 FROM hadiths WHERE book = ? AND topic = ? ORDER BY id").arg(kHadithCols));
+    q.addBindValue(book);
+    q.addBindValue(topic);
+    if (!q.exec()) {
+        qWarning() << "hadithsByTopic failed:" << q.lastError().text();
+        return out;
+    }
+    while (q.next()) out.append(rowToHadithMap(q));
+    return out;
+}
+
+QVariantList QuranBackend::hadithsInBook(const QString &book, int afterId, int limit) const
+{
+    QVariantList out;
+    if (!m_hadithDb.isOpen()) return out;
+    if (limit <= 0) limit = 40;
+
+    QSqlQuery q(m_hadithDb);
+    q.prepare(QString("SELECT %1 FROM hadiths WHERE book = ? AND id > ? ORDER BY id LIMIT ?").arg(kHadithCols));
+    q.addBindValue(book);
+    q.addBindValue(afterId);
+    q.addBindValue(limit);
+    if (!q.exec()) {
+        qWarning() << "hadithsInBook failed:" << q.lastError().text();
+        return out;
+    }
+    while (q.next()) out.append(rowToHadithMap(q));
+    return out;
+}
+
+QVariantMap QuranBackend::hadithById(int id) const
+{
+    QVariantMap result;
+    if (!m_hadithDb.isOpen()) return result;
+
+    QSqlQuery q(m_hadithDb);
+    q.prepare(QString("SELECT %1 FROM hadiths WHERE id = ? LIMIT 1").arg(kHadithCols));
+    q.addBindValue(id);
+    if (q.exec() && q.next()) {
+        result = rowToHadithMap(q);
+    }
+    return result;
+}
+
+QVariantList QuranBackend::searchHadiths(const QString &query, int limit) const
+{
+    QVariantList out;
+    if (!m_hadithDb.isOpen()) return out;
+    if (limit <= 0) limit = 30;
+
+    // Build a safe FTS5 MATCH expression: split into tokens, quote each
+    // one (so punctuation/FTS operators inside a token can't break the
+    // query or be interpreted as syntax) and prefix-match it, joined with
+    // implicit AND. e.g. `believer's deed` -> `"believer's"* "deed"*`.
+    const QStringList rawTokens = query.split(QRegExp("\\s+"), Qt::SkipEmptyParts);
+    if (rawTokens.isEmpty()) return out;
+
+    QStringList matchParts;
+    for (QString tok : rawTokens) {
+        tok.replace('"', "\"\""); // escape embedded quotes for FTS5's own quoting
+        matchParts << QString("\"%1\"*").arg(tok);
+    }
+    const QString matchExpr = matchParts.join(' ');
+
+    // kHadithCols is unqualified (fine for the plain single-table queries
+    // above), but hadiths_fts is an external-content FTS5 table that
+    // mirrors english/urdu/arabic - joined and unqualified, those three
+    // columns are ambiguous between "f" and "h", which SQLite rejects at
+    // prepare time. Qt's QSQLITE driver then surfaces that prepare
+    // failure as a misleading "Parameter count mismatch" instead of the
+    // real "ambiguous column name" error. Fully qualify every column
+    // with h. to resolve it.
+    QString qualifiedCols = QString("h.") + QString(kHadithCols).replace(", ", ", h.");
+    QSqlQuery q(m_hadithDb);
+    q.prepare(QString("SELECT %1 FROM hadiths_fts f JOIN hadiths h ON h.id = f.rowid "
+                       "WHERE hadiths_fts MATCH ? ORDER BY rank LIMIT ?").arg(qualifiedCols));
+    q.addBindValue(matchExpr);
+    q.addBindValue(limit);
+    if (!q.exec()) {
+        qWarning() << "searchHadiths failed:" << q.lastError().text() << "expr:" << matchExpr;
+        return out;
+    }
+    while (q.next()) out.append(rowToHadithMap(q));
+    return out;
+}
+
+QVariantList QuranBackend::hadithsForSelection(const QVariantList &items) const
+{
+    // Key by id so a QMap gives de-duplication + ascending order for
+    // free, mirroring versesForSelection()'s approach.
+    QMap<int, QVariantMap> ordered;
+    auto addHadith = [&ordered](const QVariantMap &h) {
+        if (h.isEmpty()) return;
+        const int id = h.value("id").toInt();
+        if (id <= 0) return;
+        ordered.insert(id, h);
+    };
+
+    for (const QVariant &itemVar : items) {
+        const QVariantMap item = itemVar.toMap();
+        const QString type = item.value("type").toString();
+        if (type == "topic") {
+            const QVariantList hs = hadithsByTopic(item.value("book").toString(), item.value("topic").toString());
+            for (const QVariant &hv : hs) addHadith(hv.toMap());
+        } else if (type == "hadith") {
+            addHadith(hadithById(item.value("id").toInt()));
+        }
+    }
+
+    QVariantList result;
+    for (auto it = ordered.constBegin(); it != ordered.constEnd(); ++it) {
+        result.append(it.value());
+    }
+    return result;
+}
+
+void QuranBackend::saveHadithProgress(int id)
+{
+    m_settings.setValue("hadithProgress/id", id);
+    m_settings.sync();
+}
+
+QVariantMap QuranBackend::lastHadithProgress() const
+{
+    const int id = m_settings.value("hadithProgress/id", 0).toInt();
+    if (id <= 0) return QVariantMap();
+    return hadithById(id);
 }

@@ -5,6 +5,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QTouchDevice>
 #include "appcenter.h"
 #include "quranbackend.h"
 #include "audiobackend.h"
@@ -14,6 +15,12 @@
 #include "dbconnectorbackend.h"
 #include "updatebackend.h"
 #include "prayerbackend.h"
+#include "installerbackend.h"
+#include "brightnessbackend.h"
+#include "volumebackend.h"
+#include "reminderbackend.h"
+#include "themebackend.h"
+#include "authbackend.h"
 
 int main(int argc, char *argv[])
 {
@@ -55,6 +62,15 @@ int main(int argc, char *argv[])
     // Also no cross-backend dependencies (self-contained: location +
     // calc settings persisted via its own QSettings, no live sensors).
     PrayerBackend prayerBackend;
+    // No cross-backend dependencies either (reads live disk state via
+    // lsblk/findmnt on demand, doesn't hold a pointer into anything else).
+    InstallerBackend installerBackend;
+    // Neither holds a pointer into any other backend.
+    BrightnessBackend brightnessBackend;
+    ThemeBackend themeBackend;
+    VolumeBackend volumeBackend;
+    ReminderBackend reminderBackend;
+    AuthBackend authBackend;
 
     QQmlApplicationEngine engine;
 
@@ -81,6 +97,19 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("dbConnectorBackend", &dbConnectorBackend);
     engine.rootContext()->setContextProperty("updateBackend", &updateBackend);
     engine.rootContext()->setContextProperty("prayerBackend", &prayerBackend);
+    engine.rootContext()->setContextProperty("installerBackend", &installerBackend);
+    engine.rootContext()->setContextProperty("brightnessBackend", &brightnessBackend);
+    engine.rootContext()->setContextProperty("volumeBackend", &volumeBackend);
+    engine.rootContext()->setContextProperty("reminderBackend", &reminderBackend);
+    engine.rootContext()->setContextProperty("themeBackend", &themeBackend);
+    engine.rootContext()->setContextProperty("authBackend", &authBackend);
+    // Real touchscreen detection (not a guess/env-var check) - QTouchDevice::devices()
+    // reflects what the windowing system (xcb/eglfs) actually reports as
+    // registered touch input hardware. Drives the virtual keyboard's
+    // auto-show-on-touch-devices default; the user can still flip the
+    // Settings toggle either way regardless of what this detects.
+    bool hasTouch = !QTouchDevice::devices().isEmpty();
+    engine.rootContext()->setContextProperty("hasTouchScreen", hasTouch);
 
     const QUrl url(QStringLiteral("qrc:/qml/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,

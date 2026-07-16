@@ -36,7 +36,7 @@ Rectangle {
         if (pathStack.length > 0) {
             currentPath = pathStack.pop()
         } else {
-            root.currentView = "home"
+            root.goBack()
         }
     }
     function doImport(item) {
@@ -68,7 +68,7 @@ Rectangle {
                     onClicked: {
                         if (connectorRoot.stage === "browse") connectorRoot.goBack()
                         else if (connectorRoot.stage === "matches") connectorRoot.stage = "browse"
-                        else root.currentView = "home"
+                        else root.goBack()
                     }
                 }
             }

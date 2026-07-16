@@ -44,7 +44,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: root.currentView = "home" }
+                MouseArea { anchors.fill: parent; onClicked: root.goBack() }
             }
             Text {
                 text: "Updates"

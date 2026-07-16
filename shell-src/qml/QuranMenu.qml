@@ -22,7 +22,7 @@ Rectangle {
         root.navPage = opts.page !== undefined ? opts.page : -1
         root.navJuz = opts.juz !== undefined ? opts.juz : -1
         root.navLayoutMode = opts.layoutMode !== undefined ? opts.layoutMode : ""
-        root.currentView = "quranreader"
+        root.navigateTo("quranreader")
     }
 
     ColumnLayout {
@@ -36,7 +36,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: root.currentView = "home" }
+                MouseArea { anchors.fill: parent; onClicked: root.goBack() }
             }
             Text { text: "Quran"; color: "#e8f5ee"; font.pixelSize: 22; font.weight: Font.Medium; Layout.leftMargin: 12 }
         }
@@ -125,7 +125,7 @@ Rectangle {
                                 menu.showGoToPage = true
                                 break
                             case "about":
-                                root.currentView = "aboutquran"
+                                root.navigateTo("aboutquran")
                                 break
                             case "random":
                                 var v = quranBackend.randomVerse()

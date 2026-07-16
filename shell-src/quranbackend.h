@@ -81,6 +81,49 @@ public:
     // Quran view's "Random" tile).
     Q_INVOKABLE QVariantMap randomVerse() const;
 
+    // ---- Hadith reader (mirrors the Quran reader's shape, adapted for
+    // hadith's book/topic structure instead of surah/juz - see
+    // HadithMenu.qml/HadithTopicPicker.qml/HadithView.qml) ----
+    // Books actually present in the db: [{book, displayName, count}].
+    Q_INVOKABLE QVariantList hadithBookList() const;
+    // Distinct topics within a book, in original chapter order (by
+    // MIN(id) per topic, not alphabetical) with a count each:
+    // [{topic, count}].
+    Q_INVOKABLE QVariantList hadithTopics(const QString &book) const;
+    // All hadiths in one topic of one book, ordered by id - bounded (a
+    // topic is at most a few dozen hadiths), unlike hadithsInBook below.
+    Q_INVOKABLE QVariantList hadithsByTopic(const QString &book, const QString &topic) const;
+    // Keyset-paginated continuous browse of a whole book: hadiths with
+    // id > afterId (pass 0 for the start of the book, or a saved
+    // progress id to resume mid-book), ordered by id, capped at limit.
+    // Call again with the last returned id as the new afterId to load
+    // the next batch (infinite scroll). Note: forward-only: there is no
+    // "load earlier" - resuming from a saved id starts the continuous
+    // scroll there and only goes forward, not backward.
+    Q_INVOKABLE QVariantList hadithsInBook(const QString &book, int afterId, int limit) const;
+    Q_INVOKABLE QVariantMap hadithById(int id) const;
+    // FTS5 full-text search across english/urdu/arabic. Query is
+    // tokenized and each token is quoted+prefix-matched internally, so
+    // arbitrary user input (quotes, FTS operators, etc.) can't produce a
+    // malformed MATCH query.
+    Q_INVOKABLE QVariantList searchHadiths(const QString &query, int limit) const;
+    // Expands a multi-select of topics/individual hadiths into an
+    // ordered, de-duplicated list of full hadith maps (by id). Each item
+    // is {"type":"topic","book":...,"topic":...} or
+    // {"type":"hadith","id":N}. Used by the "select topics/hadiths, then
+    // read just those" feature - the hadith equivalent of
+    // versesForSelection(), minus a playback step since there's no
+    // recitation audio for hadith in this db.
+    Q_INVOKABLE QVariantList hadithsForSelection(const QVariantList &items) const;
+
+    // ---- Hadith reading progress (separate from Quran's saveProgress/
+    // lastProgress above - keyed by hadith id, not surah/ayah) ----
+    Q_INVOKABLE void saveHadithProgress(int id);
+    // Returns {} if nothing saved yet, otherwise the full hadith row at
+    // the saved id (so the "Continue reading" card can show book/topic/
+    // hadith_num without a second lookup).
+    Q_INVOKABLE QVariantMap lastHadithProgress() const;
+
     // ---- Reader navigation helpers (juz/page/manzil/ruku browsing) ----
     Q_INVOKABLE QVariantList versesInSurah(int surah) const;
     Q_INVOKABLE QVariantList versesInJuz(int juz) const;
@@ -108,8 +151,17 @@ public:
 
 private:
     QVariantMap rowToVerseMap(class QSqlQuery &q) const;
+    QVariantMap rowToHadithMap(class QSqlQuery &q) const;
 
     QSqlDatabase m_quranDb;
     QSqlDatabase m_hadithDb;
+    // True once "audiodb" is actually ATTACHed on m_quranDb - false for
+    // the lite ISO variant before an audio DB import, or if attach
+    // failed. Every audiodb.-qualified query must check this first and
+    // return an empty/graceful result rather than issue a query against
+    // a schema that was never attached (which would still just fail per-
+    // call, not crash, but there's no reason to pay for a doomed round
+    // trip to SQLite when we already know the answer).
+    bool m_audioDbAttached = false;
     mutable QSettings m_settings;
 };

@@ -53,7 +53,7 @@ Rectangle {
                         text: "\u2190"
                         color: "#7fd6b4"
                         font.pixelSize: 18
-                        MouseArea { anchors.fill: parent; onClicked: root.currentView = "home" }
+                        MouseArea { anchors.fill: parent; onClicked: root.goBack() }
                     }
                     Text { text: "App Center"; color: "#e8f5ee"; font.pixelSize: 15; font.weight: Font.Medium; Layout.leftMargin: 10 }
                 }

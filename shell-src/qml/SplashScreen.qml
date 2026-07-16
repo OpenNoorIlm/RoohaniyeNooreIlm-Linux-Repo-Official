@@ -12,6 +12,16 @@ Rectangle {
     anchors.fill: parent
     color: "#0c1d19"
 
+    // Full-bleed branded background, dimmed so the badge/wordmark stay
+    // the clear focal point rather than competing with it.
+    Image {
+        anchors.fill: parent
+        source: "qrc:/assets/images/splash_background.png"
+        fillMode: Image.PreserveAspectCrop
+        opacity: 0.35
+        asynchronous: true
+    }
+
     // How long the splash stays up before auto-advancing to Home.
     property int holdMs: 2000
 
@@ -20,11 +30,6 @@ Rectangle {
         spacing: 22
 
         // ---- Logo mark ----
-        // Crescent-and-star glyph in a soft circular badge, built from the
-        // same "draw icons with unicode glyphs on plain Rectangles" style
-        // used everywhere else in this shell (no image asset pipeline
-        // exists yet, so this stays consistent rather than introducing one
-        // just for a splash screen).
         Item {
             Layout.alignment: Qt.AlignHCenter
             width: 128; height: 128
@@ -39,11 +44,12 @@ Rectangle {
                 scale: 0.7
                 opacity: 0
 
-                Text {
+                Image {
                     anchors.centerIn: parent
-                    text: "\u262A" // ☪
-                    color: "#7fd6b4"
-                    font.pixelSize: 62
+                    width: 78; height: 78
+                    source: "qrc:/assets/images/brand_icon.png"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
                 }
 
                 SequentialAnimation {

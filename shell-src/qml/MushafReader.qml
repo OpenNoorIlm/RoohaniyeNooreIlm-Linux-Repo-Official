@@ -147,32 +147,6 @@ Rectangle {
             color: "#173832"
             clip: true
 
-            // Ctrl+scroll (and Ctrl + two-finger trackpad scroll, which most
-            // desktop environments deliver as a wheel event with the Control
-            // modifier rather than a true pinch gesture) zooms the page.
-            // acceptedModifiers means plain scrolling is left alone and
-            // falls through to the Flickable below for panning.
-            WheelHandler {
-                id: wheelZoom
-                target: null
-                acceptedModifiers: Qt.ControlModifier
-                onWheel: (event) => {
-                    var factor = event.angleDelta.y > 0 ? 1.15 : (1 / 1.15)
-                    var oldZoom = zoomArea.zoom
-                    var newZoom = zoomArea.clampZoom(oldZoom * factor)
-                    if (newZoom === oldZoom) return
-
-                    // Keep the point under the cursor fixed while zooming,
-                    // instead of always zooming around the center.
-                    var cursorX = flick.contentX + event.x
-                    var cursorY = flick.contentY + event.y
-                    var ratio = newZoom / oldZoom
-                    zoomArea.zoom = newZoom
-                    flick.contentX = cursorX * ratio - event.x
-                    flick.contentY = cursorY * ratio - event.y
-                }
-            }
-
             Flickable {
                 id: flick
                 anchors.fill: parent
@@ -180,6 +154,13 @@ Rectangle {
                 contentHeight: Math.max(height, pageImage.height * pageImage.scale)
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
+                // All panning and zooming below is handled manually by
+                // interactionArea. Flickable's own drag/wheel handling is
+                // switched off so it can never compete with (and silently
+                // swallow events from) that handler - that competition was
+                // the root cause of zoom-out, drag-panning and shift+scroll
+                // all doing nothing once the page was zoomed in.
+                interactive: false
 
                 Item {
                     id: zoomArea
@@ -192,7 +173,26 @@ Rectangle {
 
                     function clampZoom(z) { return Math.max(minZoom, Math.min(maxZoom, z)) }
                     function resetZoom() { zoom = 1.0 }
-                    function zoomStep(dir) { zoom = clampZoom(zoom + dir * 0.4) }
+
+                    // Zoom in/out around a fixed viewport point (vx, vy),
+                    // e.g. the cursor position or the center of the screen -
+                    // shared by wheel-zoom, the +/- buttons and double-click,
+                    // so the point under vx/vy stays visually still instead
+                    // of the view always re-centering on zoom.
+                    function setZoomAt(newZoom, vx, vy) {
+                        newZoom = clampZoom(newZoom)
+                        if (newZoom === zoom) return
+                        var ratio = newZoom / zoom
+                        var maxX = Math.max(0, flick.contentWidth * ratio - flick.width)
+                        var maxY = Math.max(0, flick.contentHeight * ratio - flick.height)
+                        var cursorX = flick.contentX + vx
+                        var cursorY = flick.contentY + vy
+                        zoom = newZoom
+                        flick.contentX = Math.max(0, Math.min(maxX, cursorX * ratio - vx))
+                        flick.contentY = Math.max(0, Math.min(maxY, cursorY * ratio - vy))
+                    }
+
+                    function zoomStep(dir) { setZoomAt(zoom + dir * 0.4, flick.width / 2, flick.height / 2) }
 
                     Image {
                         id: pageImage
@@ -219,25 +219,50 @@ Rectangle {
                             font.pixelSize: 13
                         }
                     }
+                }
 
-                    PinchArea {
-                        anchors.fill: parent
-                        // No pinch.target set - zoom is handled manually via
-                        // onPinchUpdated below, so it can be clamped to
-                        // minZoom/maxZoom instead of the unbounded automatic
-                        // transform PinchArea would otherwise apply.
-                        onPinchUpdated: {
-                            zoomArea.zoom = zoomArea.clampZoom(zoomArea.zoom * (pinch.scale / pinch.previousScale))
-                        }
+                // Single owner of all pointer/wheel input for the reader:
+                // Ctrl+scroll zooms, Shift+scroll pans left/right, plain
+                // scroll pans up/down, click-drag pans, and double-click
+                // toggles zoom. Keeping this in one MouseArea (instead of
+                // splitting it across WheelHandler/PinchArea/Flickable like
+                // before) means there's nothing left for events to get
+                // stolen by.
+                MouseArea {
+                    id: interactionArea
+                    anchors.fill: parent
+                    property real lastX: 0
+                    property real lastY: 0
+
+                    onPressed: (mouse) => { lastX = mouse.x; lastY = mouse.y }
+                    onPositionChanged: (mouse) => {
+                        if (!pressed) return
+                        var dx = mouse.x - lastX
+                        var dy = mouse.y - lastY
+                        lastX = mouse.x
+                        lastY = mouse.y
+                        var maxX = Math.max(0, flick.contentWidth - flick.width)
+                        var maxY = Math.max(0, flick.contentHeight - flick.height)
+                        flick.contentX = Math.max(0, Math.min(maxX, flick.contentX - dx))
+                        flick.contentY = Math.max(0, Math.min(maxY, flick.contentY - dy))
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        // Double-tap/click to toggle between fit and 2x zoom -
-                        // the simplest reliable zoom gesture on a mouse, in
-                        // addition to the pinch gesture above (touch) and the
-                        // +/- buttons (any input).
-                        onDoubleClicked: zoomArea.zoom = zoomArea.zoom > 1.0 ? 1.0 : 2.0
+                    onDoubleClicked: (mouse) => {
+                        zoomArea.setZoomAt(zoomArea.zoom > 1.0 ? 1.0 : 2.0, mouse.x, mouse.y)
+                    }
+
+                    onWheel: (wheel) => {
+                        if (wheel.modifiers & Qt.ControlModifier) {
+                            var factor = wheel.angleDelta.y > 0 ? 1.15 : (1 / 1.15)
+                            zoomArea.setZoomAt(zoomArea.zoom * factor, wheel.x, wheel.y)
+                        } else if (wheel.modifiers & Qt.ShiftModifier) {
+                            var deltaX = wheel.angleDelta.x !== 0 ? wheel.angleDelta.x : wheel.angleDelta.y
+                            var maxX = Math.max(0, flick.contentWidth - flick.width)
+                            flick.contentX = Math.max(0, Math.min(maxX, flick.contentX - deltaX))
+                        } else {
+                            var maxY = Math.max(0, flick.contentHeight - flick.height)
+                            flick.contentY = Math.max(0, Math.min(maxY, flick.contentY - wheel.angleDelta.y))
+                        }
                     }
                 }
             }

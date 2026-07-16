@@ -43,6 +43,28 @@ Window {
         }
     }
 
+    // ---- Menu button state: HomeScreen doubles as the "all apps" view
+    // (it already lists every section - Quran, Hadith, App Center,
+    // Prayer Times, etc), so Menu just navigates there. menuOrigin
+    // remembers what was open right before Menu was pressed, so a
+    // second Menu press returns to that same app instead of just
+    // sitting on Home - "press again to go to the recently opened app"
+    // from the spec. Cleared once consumed so a third press (now
+    // already back on the recent app) opens the menu fresh again
+    // rather than bouncing between only two screens forever. ----
+    property string menuOrigin: ""
+    function toggleMenu() {
+        root.sounds.click()
+        if (currentView === "home" && menuOrigin !== "") {
+            var target = menuOrigin
+            menuOrigin = ""
+            root.currentView = target
+        } else {
+            menuOrigin = currentView
+            root.navigateTo("home")
+        }
+    }
+
     // ---- Theme helper: a single object every screen can read colors
     // from, so switching dark/light or picking an accent color updates
     // everywhere at once. Screens opt in by using root.theme.bg /
@@ -112,20 +134,65 @@ Window {
     // the scale automatically, so nothing about input handling changes. ----
     readonly property real refW: 1920
     readonly property real refH: 1080
+
+    // ---- Orientation: landscape (default) or portrait, toggled via F4
+    // or the global orientation button (present on every screen, not
+    // just Settings - see orientationToggle below), and also seeded
+    // from/kept in sync with the OS-reported physical screen rotation
+    // via Screen.primaryOrientation. autoOrientation is a plain binding
+    // so it re-evaluates live if the platform reports a rotation change
+    // (e.g. an external xrandr/eglfs rotate) - orientationMode follows
+    // it automatically UNTIL the user manually toggles once, at which
+    // point the manual choice wins for the rest of the session (a user
+    // who explicitly asked for portrait shouldn't get silently flipped
+    // back by a stale/spurious platform orientation reading).
+    readonly property string autoOrientation: {
+        var o = Screen.primaryOrientation
+        return (o === Qt.PortraitOrientation || o === Qt.InvertedPortraitOrientation)
+            ? "portrait" : "landscape"
+    }
+    property bool orientationManual: false
+    property string orientationMode: autoOrientation
+    onAutoOrientationChanged: if (!orientationManual) orientationMode = autoOrientation
+    function toggleOrientation() {
+        orientationManual = true
+        orientationMode = (orientationMode === "landscape") ? "portrait" : "landscape"
+        root.sounds.click()
+    }
+    readonly property bool portrait: orientationMode === "portrait"
+
+    // ---- Automatic screen-resize: every screen in this app was laid
+    // out against a 1920x1080 reference (this dev machine's real
+    // resolution), with plenty of fixed-pixel icon/font/spacing values
+    // that don't reflow on their own. Rather than touch every one of the
+    // ~20 QML screens individually, the whole interactive UI is rendered
+    // into a fixed 1920x1080 virtualCanvas and then uniformly scaled (and
+    // centered/letterboxed if the aspect ratio differs) to fit whatever
+    // the real screen size turns out to be - a 7" 1024x600 touch panel
+    // shrinks everything proportionally, a 4K panel enlarges it, and
+    // Qt Quick's item transforms handle touch/mouse hit-testing through
+    // the scale automatically, so nothing about input handling changes.
+    // In portrait mode the canvas is additionally rotated 90 degrees
+    // (see virtualCanvas.rotation below) - the available space for
+    // fitting it is therefore the window's height/width SWAPPED, since
+    // a landscape-authored 1920x1080 canvas rotated on its side occupies
+    // a portrait-shaped footprint. ----
+    readonly property real availW: portrait ? height : width
+    readonly property real availH: portrait ? width : height
     // Guarded against width/height still being 0 for the first frame or
     // two before the window manager assigns real geometry (confirmed via
     // headless testing) - without this, the whole UI would render at
     // scale 0 (invisible) for a brief moment on every real boot.
-    readonly property real uiScale: (width > 0 && height > 0) ? Math.min(width / refW, height / refH) : 1
+    readonly property real uiScale: (availW > 0 && availH > 0) ? Math.min(availW / refW, availH / refH) : 1
 
     Item {
         id: virtualCanvas
         width: root.refW
         height: root.refH
         scale: root.uiScale
-        transformOrigin: Item.TopLeft
-        x: (root.width - width * scale) / 2
-        y: (root.height - height * scale) / 2
+        rotation: root.portrait ? 90 : 0
+        transformOrigin: Item.Center
+        anchors.centerIn: parent
 
         // ---- Audio safety net: whenever currentView changes AWAY from
         // the Quran reader (goBack, navigateTo, or any other path - this
@@ -250,6 +317,68 @@ Window {
                     font.pixelSize: 16
                     MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: reminderBanner.visible = false }
                 }
+            }
+        }
+
+        // ---- Global Home / Menu / Back / Orientation cluster: floating,
+        // bottom-left, present on every screen via Main.qml (rather than
+        // added to each of the ~20 individual screen files) so it can
+        // never be missing from one by omission. Only hidden on splash
+        // (boot) and the lock screen (that already covers the whole
+        // window at z:5000, above this) - shown on Home too, unlike the
+        // original cut, because the Menu button's "press again to
+        // return" behavior below only makes sense if it's still tappable
+        // once Home is showing. Back re-uses root.goBack() - the same
+        // real navigation history every screen's own back button already
+        // uses - so this is a second entry point to the same function,
+        // not a competing implementation. Orientation toggle lives here
+        // (not just in Settings) per spec: "the btn should be everywhere
+        // not just in settings". ----
+        Row {
+            id: navCluster
+            visible: currentView !== "splash"
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            anchors.margins: 22
+            spacing: 14
+            z: 2000
+
+            Rectangle {
+                width: 56; height: 56; radius: 28
+                color: theme.dark ? "#173832" : "#ffffff"
+                border.width: 1
+                border.color: theme.dark ? "#22493f" : "#d7e6df"
+                Text { anchors.centerIn: parent; text: "\u2190"; font.pixelSize: 22; color: theme.subtext }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.click(); root.goBack() } }
+            }
+            Rectangle {
+                width: 56; height: 56; radius: 28
+                color: theme.dark ? "#173832" : "#ffffff"
+                border.width: 1
+                border.color: theme.dark ? "#22493f" : "#d7e6df"
+                Text { anchors.centerIn: parent; text: "\u2302"; font.pixelSize: 22; color: theme.subtext }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.click(); root.menuOrigin = ""; root.currentView = "home"; root.screenStack = [] } }
+            }
+            Rectangle {
+                width: 56; height: 56; radius: 28
+                color: (currentView === "home" && menuOrigin !== "") ? theme.accent : (theme.dark ? "#173832" : "#ffffff")
+                border.width: 1
+                border.color: theme.dark ? "#22493f" : "#d7e6df"
+                Text {
+                    anchors.centerIn: parent
+                    text: "\u2630"
+                    font.pixelSize: 20
+                    color: (currentView === "home" && menuOrigin !== "") ? "#ffffff" : theme.subtext
+                }
+                MouseArea { anchors.fill: parent; onClicked: root.toggleMenu() }
+            }
+            Rectangle {
+                width: 56; height: 56; radius: 28
+                color: theme.dark ? "#173832" : "#ffffff"
+                border.width: 1
+                border.color: theme.dark ? "#22493f" : "#d7e6df"
+                Text { anchors.centerIn: parent; text: "\u27F3"; font.pixelSize: 22; color: theme.subtext }
+                MouseArea { anchors.fill: parent; onClicked: root.toggleOrientation() }
             }
         }
 
@@ -414,6 +543,25 @@ Window {
     Shortcut { sequence: Qt.Key_VolumeMute; onActivated: volumeBackend.toggleMute() }
     Shortcut { sequence: Qt.Key_MonBrightnessUp; onActivated: brightnessBackend.increase() }
     Shortcut { sequence: Qt.Key_MonBrightnessDown; onActivated: brightnessBackend.decrease() }
+
+    // ---- Plain F-row fallbacks: some keyboards/panels don't send the
+    // dedicated Key_Volume*/Key_MonBrightness* codes above (no Fn-lock,
+    // or a plain USB keyboard with no media row at all), so F1-F3/F5-F6
+    // are bound to the same actions as a second, always-available path.
+    // Laptop-standard layout: F1 mute, F2 vol-, F3 vol+, F5 brightness-,
+    // F6 brightness+. Both bindings can fire for the same physical key
+    // on hardware that sends both codes - harmless, since increase/
+    // decrease/toggleMute are idempotent-safe single steps either way.
+    Shortcut { sequence: "F1"; onActivated: volumeBackend.toggleMute() }
+    Shortcut { sequence: "F2"; onActivated: volumeBackend.decrease() }
+    Shortcut { sequence: "F3"; onActivated: volumeBackend.increase() }
+    Shortcut { sequence: "F5"; onActivated: brightnessBackend.decrease() }
+    Shortcut { sequence: "F6"; onActivated: brightnessBackend.increase() }
+
+    // ---- F4: landscape/portrait toggle, same action as the global
+    // orientation button in navCluster below - see toggleOrientation()
+    // above for the manual-override behavior this triggers.
+    Shortcut { sequence: "F4"; onActivated: root.toggleOrientation() }
 
     // ---- On-screen "phone-like" OSD: briefly shows an icon + level bar
     // whenever brightness/volume changes, whether triggered by a

@@ -311,9 +311,15 @@ Rectangle {
         }
 
         // ---- Page navigation row ----
+        // layoutDirection: RightToLeft so Next lands on the left and
+        // Previous on the right - an Arabic mushaf reads right-to-left,
+        // so the "forward" direction through the book is leftward on
+        // screen. This matches that reading direction instead of the
+        // default LTR previous-then-next ordering.
         RowLayout {
             Layout.fillWidth: true
             spacing: 12
+            layoutDirection: Qt.RightToLeft
 
             Rectangle {
                 Layout.fillWidth: true
@@ -340,12 +346,18 @@ Rectangle {
                     color: "#e8f5ee"
                     placeholderText: "Page"
                     placeholderTextColor: "#5f8a7b"
+                    // Reflects the live page number as pages turn (edge
+                    // swipe, Left/Right keys, or the buttons here), instead
+                    // of only ever showing a typed value and going blank
+                    // after every jump. Only synced while not focused, so
+                    // it never overwrites what's mid-typing.
+                    text: activeFocus ? text : String(view.currentPage)
                     validator: IntValidator { bottom: view.minPage; top: view.maxPage }
                     background: Item {}
                     onAccepted: {
                         var p = parseInt(text)
                         if (!isNaN(p)) view.goToPage(p)
-                        text = ""
+                        focus = false
                     }
                 }
             }

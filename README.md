@@ -11,6 +11,7 @@ It boots straight into its own custom shell (built with Qt/QML), not a general-p
 ## Features
 
 - **Qur'an reader** — full text, organized by Surah and Juz, with a dedicated Hifz (memorization) section, reciter selection, "go to page" navigation, and an About Qur'an section
+- **Mushaf reader** — scanned print-mushaf pages, viewed page by page, with pinch-to-zoom (touch), mouse-wheel/drag zoom and pan, and resume-last-page
 - **Hadith reader** — Sahih al-Bukhari and Sahih Muslim, organized by topic
 - **Prayer Times** — location-based prayer time display
 - **Qibla direction** finder

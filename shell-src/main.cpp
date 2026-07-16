@@ -8,6 +8,7 @@
 #include <QTouchDevice>
 #include "appcenter.h"
 #include "quranbackend.h"
+#include "mushafbackend.h"
 #include "audiobackend.h"
 #include "wifibackend.h"
 #include "powerbackend.h"
@@ -45,6 +46,9 @@ int main(int argc, char *argv[])
     // teardown always has valid objects to call into.
     AppCenter appCenter;
     QuranBackend quranBackend;
+    // No cross-backend dependencies (own dedicated SQLite connection),
+    // declared here mainly for readability alongside QuranBackend.
+    MushafBackend mushafBackend;
     // Declared after QuranBackend (so it's destroyed BEFORE QuranBackend,
     // per the same reverse-destruction-order reasoning as above -
     // AudioBackend holds a raw QuranBackend* and must stop using it
@@ -87,9 +91,11 @@ int main(int argc, char *argv[])
         "/opt/roohaniye/data/quran_audio.db",
         "/opt/roohaniye/data/hadiths.db"
     );
+    mushafBackend.openDatabase("/opt/roohaniye/data/mushafs.db");
 
     engine.rootContext()->setContextProperty("appCenter", &appCenter);
     engine.rootContext()->setContextProperty("quranBackend", &quranBackend);
+    engine.rootContext()->setContextProperty("mushafBackend", &mushafBackend);
     engine.rootContext()->setContextProperty("audioBackend", &audioBackend);
     engine.rootContext()->setContextProperty("wifiBackend", &wifiBackend);
     engine.rootContext()->setContextProperty("powerBackend", &powerBackend);

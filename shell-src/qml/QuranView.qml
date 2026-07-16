@@ -162,6 +162,18 @@ Rectangle {
         selectedReciterId = quranBackend.preference("reciterId",
             reciterList.length > 0 ? reciterList[0].id : "")
 
+        // A selection playlist may already be playing if we were just
+        // navigated here from QuranMenu.qml's "select items, then pick a
+        // reciter" flow (that flow starts AudioBackend playback - a
+        // global context property - before this view even exists). Pick
+        // up the already-active session so the mini audio bar shows
+        // immediately instead of only appearing after the user manually
+        // taps a verse's play button.
+        if (audioBackend.playing || audioBackend.usingPlaylist) {
+            audioSessionStarted = true
+            selectedReciterId = audioBackend.currentReciterId || selectedReciterId
+        }
+
         if (root.navLayoutMode !== "") {
             layoutMode = root.navLayoutMode
             root.navLayoutMode = ""

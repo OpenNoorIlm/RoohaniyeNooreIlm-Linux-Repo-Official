@@ -30,6 +30,16 @@ databases with the actual Quran/Hadith content.
     from it. Safe to delete once you've confirmed the split files have
     been working for a while; nothing currently reads it.
   - `hadiths.db` — ~42MB, 15,152 hadiths from Bukhari + Muslim
+  - `mushafs.db` — ~5.4GB, `pages(id, mushaf_name, page_number, format,
+    image BLOB)` — full-page scanned images (PNG) for 8 different
+    hafizi/printed mushaf editions (indo-pak, Saudi print, Pakistani
+    print, Bangladesh, Deeniyat, Maa Mutashabihat, and two more
+    indo-pak-style hafizi variants). Built from
+    `~/Downloads/quran/build_mushafs_db.py` off scanned page folders
+    under `~/Downloads/quran/mushafs/<edition>/pN.png`; copied into
+    `/opt/roohaniye/data/` this session (see "Quran Mushaf (scanned page
+    images) feature" below). Source images stay at
+    `~/Downloads/quran/mushafs.db` too — not deleted, just copied.
   - Migration script that produced the split:
     `shell-src/scripts/split_quran_db.py` (re-runnable if you ever need
     to regenerate quran_text.db/quran_audio.db from the original combined
@@ -140,6 +150,23 @@ exact.
   - `hadiths` (separate db): id, book, hadith_num, topic, english, urdu,
     arabic, power. Also has FTS5 tables (hadiths_fts*) for search, unused
     by the shell so far.
+- `mushafbackend.h/.cpp` — **NEW this session.** Read-only SQLite layer
+  over `mushafs.db` (own dedicated connection, `mushaf_conn`, separate
+  from `QuranBackend`'s `quran_conn`/`hadith_conn` — no cross-backend
+  pointer, doesn't need one). `mushafList()` — the 8 editions with a
+  human `displayName` derived from the raw folder-name-style
+  `mushafName` (`prettifyMushafName()`: drops everything from `__` in
+  the name onward, replaces `_`/`-` with spaces, title-cases each word)
+  plus `pageCount`/`minPage`/`maxPage`. `pageImagePath(mushafName,
+  pageNumber)` — same disk-cache pattern as
+  `QuranBackend::audioFilePath()`: writes the requested page's PNG blob
+  to a cache file (dedup'd by mushaf+page, under
+  `~/.cache/<appName>/roohaniye-mushaf/`) and returns the local path, so
+  QML's `Image{}` loads a real file instead of a round-tripped base64
+  string. `saveProgress()`/`lastProgress()` — its own
+  `mushafProgress/*` QSettings keys in `shell_settings.ini`, independent
+  of `QuranBackend`'s surah/ayah-based progress (a mushaf page position
+  isn't a surah/ayah).
 - `audiobackend.h/.cpp` — wraps `QMediaPlayer` for verse-by-verse
   recitation playback, wired into `main.cpp`/`CMakeLists.txt`/QML context
   as `audioBackend`. Three loop modes: `Off` (play once), `RepeatVerse`
@@ -191,12 +218,19 @@ exact.
   transitions, Esc-to-quit Shortcut. Boots to `currentView: "splash"`;
   `SplashScreen.qml` advances to `"home"` itself via an internal Timer.
   `currentView` values: `"splash"`, `"home"`, `"appcenter"`,
-  `"quranmenu"`, `"quranreader"`, `"quran"` (legacy alias, also routes to
+  `"quranmenu"`, `"mushafgallery"`, `"mushafreader"` (**new this
+  session**, see "Quran Mushaf (scanned page images) feature" below),
+  `"quranreader"`, `"quran"` (legacy alias, also routes to
   QuranView.qml), `"aboutquran"`, `"hadith"`, `"settings"`,
   `"dbconnector"` — anything else falls through to `HomeScreen.qml`. Nav properties:
   `navSurah`/`navAyah` (existing) plus `navPage`/`navJuz`/`navLayoutMode`
   (added this session) — all one-shot, consumed and reset by
-  `QuranView.qml`'s `Component.onCompleted`.
+  `QuranView.qml`'s `Component.onCompleted`. `navMushafName`/
+  `navMushafPage` (**new this session**) are the same one-shot pattern
+  for `MushafGallery.qml` → `MushafReader.qml`.
+- `qml/MushafGallery.qml` / `qml/MushafReader.qml` — **NEW this
+  session**, see "Quran Mushaf (scanned page images) feature" below for
+  the full writeup.
 - `qml/HomeScreen.qml` — Quran tile now routes to `"quranmenu"` (was
   `"quran"` direct-to-reader — changed this session so the new landing
   menu is actually reachable). Hadith tile unchanged. App grid: App
@@ -204,11 +238,13 @@ exact.
   section below). **Prayer Times and Qibla now work too** — built and
   verified this session, see "Prayer Times / Qibla (this session)" below.
 - `qml/QuranMenu.qml` — landing screen for "Quran" from the home screen:
-  tiles for Hafizi (mushaf), Juz, Surah, Go to Page, About Quran, Random,
-  plus a "Continue reading" card when `quranBackend.lastProgress()` has a
-  surah. **Now in `qml.qrc` and reachable** (was dead code at the start of
-  this session — written previous session, never wired in). Verified
-  clean load this session via the temporary-default technique above.
+  tiles for Hafizi (mushaf), **Quran Mushaf (new this session — opens
+  `MushafGallery.qml`, see below)**, Juz, Surah, Go to Page, About
+  Quran, Random, plus a "Continue reading" card when
+  `quranBackend.lastProgress()` has a surah. **Now in `qml.qrc` and
+  reachable** (was dead code at the start of this session — written
+  previous session, never wired in). Verified clean load this session
+  via the temporary-default technique above.
 - `qml/QuranView.qml` — the per-surah/mushaf reader. Reading mode:
   per-surah scroll with inline translations, now with a small play/pause
   icon per verse. Mushaf mode: Hafizi-style dense Arabic-only paginated
@@ -341,7 +377,133 @@ exact.
   `InstallerBackend`/`InstallerWizard.qml`'s optional account-creation
   step. See "User accounts / login system" below for the full writeup.
 
-## Hadith reader overhaul, mirroring the Quran app (this session)
+## Quran Mushaf (scanned page images) feature (this session)
+
+**The feature requested**: embed the newly-built `mushafs.db` (5.4GB,
+8 scanned mushaf editions as full-page PNGs) into the shell, add a
+"Quran Mushaf" entry point inside the existing Quran app, with an
+edition picker, a page-by-page reader with copyright notice, resume
+(remembers last edition + page), and pinch/click zoom.
+
+**Context**: this picked up directly from an interrupted prior session
+(see the raw transcript this session started from) that had already:
+built `mushafs.db` from scanned page folders
+(`~/Downloads/quran/build_mushafs_db.py`, schema `pages(id, mushaf_name,
+page_number, format, image BLOB)`, indexed on `(mushaf_name,
+page_number)`), verified all 5,067 pages packed correctly across 8
+editions, and started reading `quranbackend.h`/`.cpp` and the QML
+patterns to model a new backend on. Nothing had actually been written to
+`shell-src/` yet when this session picked it up — `MushafBackend`
+didn't exist, `CMakeLists.txt` had no mushaf entry, `mushafs.db` wasn't
+copied into `/opt/roohaniye/data/`. All of that was built fresh this
+session, following the exact same conventions as `QuranBackend`/
+`AudioBackend`'s existing disk-cache pattern rather than inventing a new
+one.
+
+**Built**:
+1. Copied `~/Downloads/quran/mushafs.db` → `/opt/roohaniye/data/
+   mushafs.db` (md5sum-verified identical, 5,399,437,312 bytes).
+2. `mushafbackend.h/.cpp` (new backend, see Architecture section above
+   for the full method rundown) — registered as `mushafBackend` in
+   `main.cpp`/`CMakeLists.txt`, opened via
+   `mushafBackend.openDatabase("/opt/roohaniye/data/mushafs.db")`
+   alongside `quranBackend.openDatabases()`.
+3. `qml/MushafGallery.qml` — landing screen for the feature: back arrow,
+   a "Continue reading" card (last edition + page, if any), and a list
+   of all 8 editions (`mushafBackend.mushafList()`) each showing its
+   prettified display name and page count. Tapping one opens
+   `MushafReader.qml` at that edition's `minPage` (or the saved page for
+   "Continue reading").
+4. `qml/MushafReader.qml` — the reader itself:
+   - Top bar: back (saves progress first), edition name, page counter,
+     +/− zoom buttons.
+   - **Copyright/provenance banner**, always visible above the page
+     image — states the edition name and that images are for personal
+     reading only, rights belong to the original publisher. This was an
+     explicit part of the ask ("a CopyRight at top same thing").
+   - Page image via `mushafBackend.pageImagePath(mushafName,
+     currentPage)` (disk-cached PNG path, `Image { source: "file://" +
+     path }`), inside a `Flickable` for pan + a `PinchArea` (touch
+     pinch-zoom, manually clamped 1.0–4.0x rather than using
+     `pinch.target`'s automatic unclamped transform) + double-click/tap
+     to toggle fit↔2x zoom (the reliable gesture on a mouse, since this
+     dev box has no touchscreen to test real pinch on) + the header
+     +/− buttons (work with any input method).
+   - Left/right invisible edge-tap zones for page turning when not
+     zoomed in (disabled while zoomed so they don't fight the pan drag),
+     plus explicit Previous/Next buttons and a page-jump field
+     (mirrors `QuranView.qml`'s mushaf-mode page nav row) and
+     `Keys.onLeftPressed`/`onRightPressed` for a physical/virtual
+     keyboard.
+   - Resume: `Component.onCompleted` checks `root.navMushafPage` (set by
+     the gallery) first, else `mushafBackend.lastProgress()` for that
+     same edition, else the edition's `minPage`. Saves on every page
+     change is NOT done per-turn (would thrash `QSettings::sync()` on
+     fast flipping) — only on `Component.onDestruction` (leaving the
+     screen), same pattern as `QuranView.qml`'s
+     `saveCurrentProgress()`.
+5. `qml/QuranMenu.qml` — new "Quran Mushaf" tile (between Hafizi and
+   Juz) routing to `root.navigateTo("mushafgallery")`.
+6. `qml/Main.qml` — `"mushafgallery"`/`"mushafreader"` routes,
+   `navMushafName`/`navMushafPage` one-shot nav properties (same pattern
+   as `navPage`/`navJuz`).
+7. `CMakeLists.txt`/`qml.qrc` — wired `mushafbackend.cpp/.h` and both new
+   QML files in.
+
+**Verified** (same headless technique as every other session in this
+project):
+- Clean `cmake .. && make` after each step.
+- Real-defaults headless boot (`QT_QPA_PLATFORM=offscreen`): zero QML
+  warnings, `openDatabases: quranOk= true hadithOk= true` and
+  `MushafBackend::openDatabase: ok= true` both confirmed.
+- Temporarily hardcoded `currentView` to `"mushafgallery"` — clean, zero
+  warnings (exercises `mushafBackend.mushafList()` for real, all 8
+  editions).
+- Temporarily hardcoded `currentView` to `"mushafreader"` with
+  `navMushafName: "indo-pak"` — clean, zero warnings. Went further than
+  a render check: confirmed via `find`/`file` on disk that
+  `pageImagePath()` really wrote a valid file (`~/.cache/RoohaniyeNooreIlmLinux
+  Shell/roohaniye-mushaf/indo-pak_p4.png`, confirmed "PNG image data,
+  688 x 1000, 8-bit colormap" by the real `file` command — i.e. the blob
+  genuinely round-tripped out of the 5.4GB db correctly, not just "no
+  error thrown"). Page 4 (not 1) is correct: `indo-pak`'s `minPage` is 4
+  in the source data (pages 1–3 were never scanned in `p0*.png` naming
+  for that edition — a known upstream gap flagged by the earlier
+  interrupted session, not something this session's code caused).
+- All temporary `Main.qml` hardcodes (`currentView`, `navMushafName`)
+  reverted; diffed clean against a pre-test backup
+  (`/tmp/Main.qml.backup`). Final rebuild + real-defaults headless run
+  confirmed clean again. `grep -rn TEMP-DEBUG` across `shell-src`
+  returned nothing.
+
+**Not done / follow-ups**:
+- No real hands-on tap-through by the user (Claude can't tap/pinch) —
+  same caveat as every other feature in this project. Pinch-zoom in
+  particular is unexercised on real touch hardware since this dev box
+  has none; only the click/double-click zoom path and the +/− buttons
+  were exercisable headlessly (and even those only as "renders without
+  a binding error", not "the image visibly zoomed").
+- `indo-pak`'s missing pages 1–3 (flagged by the earlier interrupted
+  session too) — not investigated further this session; if the user
+  wants those pages, they'd need to be sourced/scanned and re-packed
+  into `mushafs.db` (re-run `build_mushafs_db.py` after adding
+  `mushafs/indo-pak/p001.png`..`p003.png` or similar).
+- `mushafs.db` (5.4GB) is now a THIRD large data file in
+  `/opt/roohaniye/data/` alongside `quran_audio.db` (21.5GB) and
+  `quran_audio_embedded.db` (21.5GB, deprecated/unused — see the
+  "safe to delete" note in "Where things live" above). If/when a
+  `--lite`/`--full` split is revisited for the live-build ISO (see
+  "Live .iso build pipeline" below), `mushafs.db` should be treated the
+  same way as `quran_audio.db` — bundle in `--full`, leave out of
+  `--lite` and let it be imported later via the existing Database
+  Connector app (which does NOT currently know about `mushafs.db` —
+  `dbconnectorbackend.cpp`'s table/column-shape matching would need a
+  `pages(mushaf_name, page_number, image)` case added for that to work;
+  not done this session, since it wasn't asked for).
+- No visual design review by the user (copyright banner styling, tile
+  layout, zoom feel) — only "renders clean, data path correct."
+
+
 
 
 **The feature requested**: bring Hadith up to the same level as the Quran
@@ -1917,6 +2079,19 @@ than my test values.
     ARM first (native ARM hardware or a cross-compilation toolchain),
     THEN a second `lb config --architectures arm64` pass. Not scoped
     beyond that yet.
+17. **Quran Mushaf (scanned page images) feature** — DONE this session
+    (see "Quran Mushaf (scanned page images) feature" above). New
+    `MushafBackend` over the newly-built `mushafs.db` (8 scanned mushaf
+    editions, 5,067 pages), a `MushafGallery.qml` edition picker and
+    `MushafReader.qml` page-by-page viewer with copyright banner,
+    pinch/click zoom, resume-last-page, reachable from a new tile in
+    `QuranMenu.qml`. Headless-verified including a real blob→cache-file
+    round-trip check (`file` confirmed a genuine PNG came out of the
+    5.4GB db). Follow-ups: no real touch/pinch hands-on test, `indo-pak`
+    edition is missing pages 1–3 in the source data (not fixed), and the
+    Database Connector app doesn't yet know how to import/hot-swap a
+    replacement `mushafs.db` (would need a new table-shape case added to
+    `dbconnectorbackend.cpp` if that's wanted later).
 
 ## Things to watch out for
 

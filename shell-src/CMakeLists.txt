@@ -14,6 +14,8 @@ add_executable(roohaniye-shell
     appcenter.h
     quranbackend.cpp
     quranbackend.h
+    mushafbackend.cpp
+    mushafbackend.h
     audiobackend.cpp
     audiobackend.h
     wifibackend.cpp

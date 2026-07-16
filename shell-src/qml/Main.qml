@@ -144,6 +144,8 @@ Window {
                 if (currentView === "home") return "HomeScreen.qml"
                 if (currentView === "appcenter") return "AppCenter.qml"
                 if (currentView === "quranmenu") return "QuranMenu.qml"
+                if (currentView === "mushafgallery") return "MushafGallery.qml"
+                if (currentView === "mushafreader") return "MushafReader.qml"
                 if (currentView === "quranreader") return "QuranView.qml"
                 if (currentView === "quran") return "QuranView.qml" // legacy direct-to-reader route, kept as an alias
                 if (currentView === "aboutquran") return "AboutQuran.qml"
@@ -377,6 +379,12 @@ Window {
     property int navPage: -1
     property int navJuz: -1
     property string navLayoutMode: ""
+
+    // Set by MushafGallery.qml before switching to "mushafreader" - one-shot,
+    // consumed and reset by MushafReader.qml's Component.onCompleted, same
+    // pattern as the Quran nav properties above.
+    property string navMushafName: ""
+    property int navMushafPage: -1
 
     // Set by HadithMenu.qml's openReader() before switching to
     // "hadithreader"; HadithView.qml consumes these once on load and

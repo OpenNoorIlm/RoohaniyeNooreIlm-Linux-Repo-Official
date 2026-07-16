@@ -15,6 +15,27 @@ Rectangle {
     property bool showSurahPicker: false
     property bool showGoToPage: false
 
+    // ---- "Select items, then pick a reciter" playback, mirroring
+    // QuranView.qml's flow. JuzPicker/SurahPicker emit playSelected(items)
+    // when the user confirms a multi-select; that's stashed here and a
+    // ReciterPicker overlay opens on top of this menu. Picking a reciter
+    // expands the selection into a verse playlist and starts it via
+    // AudioBackend (a global context property, so playback keeps going
+    // across the screen navigation below), then drops into the reader so
+    // the mini audio bar is visible.
+    property var pendingSelection: []
+    property bool showReciterPicker: false
+
+    function startSelectionPlayback(reciterId) {
+        var verses = quranBackend.versesForSelection(pendingSelection)
+        if (verses.length === 0) return
+        quranBackend.setPreference("reciterId", reciterId)
+        audioBackend.playSelection(verses, reciterId)
+        pendingSelection = []
+        showReciterPicker = false
+        menu.openReader({ surah: verses[0].surah, ayah: verses[0].ayah, layoutMode: "reading" })
+    }
+
     function openReader(opts) {
         // opts: { surah, ayah, page, juz, layoutMode }
         root.navSurah = opts.surah !== undefined ? opts.surah : -1
@@ -82,6 +103,7 @@ Rectangle {
             Repeater {
                 model: [
                     { icon: "\u25A6", label: "Hafizi", sub: "Dense Arabic mushaf view", action: "hafizi" },
+                    { icon: "\uD83D\uDCD3", label: "Quran Mushaf", sub: "Scanned page-by-page mushaf editions", action: "mushafgallery" },
                     { icon: "\u2637", label: "Juz", sub: "Browse by juz (1\u201330)", action: "juz" },
                     { icon: "\uD83D\uDCD6", label: "Surah", sub: "Browse all 114 surahs", action: "surah" },
                     { icon: "#", label: "Go to Page", sub: "Jump to a mushaf page", action: "page" },
@@ -114,6 +136,9 @@ Rectangle {
                             switch (modelData.action) {
                             case "hafizi":
                                 menu.openReader({ page: 1, layoutMode: "mushaf" })
+                                break
+                            case "mushafgallery":
+                                root.navigateTo("mushafgallery")
                                 break
                             case "juz":
                                 menu.showJuzPicker = true
@@ -148,6 +173,11 @@ Rectangle {
                 menu.openReader({ juz: juz, layoutMode: "mushaf" })
             }
             onClosed: menu.showJuzPicker = false
+            onPlaySelected: {
+                menu.pendingSelection = items
+                menu.showJuzPicker = false
+                menu.showReciterPicker = true
+            }
         }
     }
 
@@ -160,6 +190,21 @@ Rectangle {
                 menu.openReader({ surah: surah, ayah: ayah, layoutMode: "reading" })
             }
             onClosed: menu.showSurahPicker = false
+            onPlaySelected: {
+                menu.pendingSelection = items
+                menu.showSurahPicker = false
+                menu.showReciterPicker = true
+            }
+        }
+    }
+
+    Loader {
+        active: menu.showReciterPicker
+        anchors.fill: parent
+        sourceComponent: ReciterPicker {
+            currentReciterId: quranBackend.preference("reciterId", "")
+            onPicked: menu.startSelectionPlayback(reciterId)
+            onClosed: { menu.pendingSelection = []; menu.showReciterPicker = false }
         }
     }
 

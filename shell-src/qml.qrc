@@ -6,6 +6,8 @@
         <file>qml/AppCenter.qml</file>
         <file>qml/QuranView.qml</file>
         <file>qml/QuranMenu.qml</file>
+        <file>qml/MushafGallery.qml</file>
+        <file>qml/MushafReader.qml</file>
         <file>qml/AboutQuran.qml</file>
         <file>qml/SurahPicker.qml</file>
         <file>qml/JuzPicker.qml</file>

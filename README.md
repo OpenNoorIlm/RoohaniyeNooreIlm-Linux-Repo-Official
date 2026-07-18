@@ -23,7 +23,7 @@ It boots straight into its own custom shell (built with Qt/QML), not a general-p
 - **Light/Dark theming**
 - **Database Connector** — import your own `.db` content packs
 
-Designed to run on **all hardware** — from modern laptops down to old, low-spec machines (tested successfully on a 2GB RAM / DDR3L laptop).
+Designed to run on **all hardware** — from modern laptops down to old, low-spec machines (tested successfully on a 2GB RAM / DDR3L tablet).
 
 ---
 

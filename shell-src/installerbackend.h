@@ -64,9 +64,20 @@ public:
     // the marker file is manually removed.
     Q_INVOKABLE bool isInstalled() const;
 
-    // Real, read-only disk enumeration via `lsblk`. Each entry:
-    // { path, name, sizeLabel, sizeBytes, model, transport ("usb"/
-    // "sata"/"nvme"/...), isRemovable }. Always excludes the disk
+    // Real, read-only disk enumeration via `lsblk -J` (full tree,
+    // including partitions, so we can warn before anything is erased).
+    // Each entry: { path, name, sizeLabel, sizeBytes, model, transport
+    // ("usb"/"sata"/"nvme"/...), isRemovable, partitionTableType
+    // ("gpt"/"dos"/"none"), partitionCount, isBlank (no partition table
+    // and no partitions), hasEncryption (LUKS or BitLocker found on any
+    // partition), warnings (QStringList-as-QVariantList of human-
+    // readable strings - existing partitions, encryption, detected
+    // Windows/Linux installs - meant to be shown prominently in the
+    // disk picker and again at the final review step before ERASE).
+    // Detection here is all unprivileged (lsblk only, no os-prober/
+    // mounting) so it stays fast enough to call on every UI refresh;
+    // it can say "an NTFS/ext4 partition exists" but not confidently
+    // identify which OS/version is on it. Always excludes the disk
     // backing the currently-running root filesystem - see class
     // comment. Returns [] (with lsblk missing/failing) rather than ever
     // guessing.

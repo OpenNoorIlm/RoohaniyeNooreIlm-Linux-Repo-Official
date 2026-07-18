@@ -270,41 +270,57 @@ Rectangle {
                     Repeater {
                         model: diskModel.items
                         delegate: Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 84
-                            radius: 14
                             readonly property bool isSelected: wiz.selectedDisk && wiz.selectedDisk.path === modelData.path
+                            readonly property bool hasWarnings: modelData.warnings && modelData.warnings.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: cardCol.height + 28
+                            radius: 14
                             color: isSelected ? "#0f6e56" : "#173832"
-                            border.width: isSelected ? 2 : 0
-                            border.color: "#7fd6b4"
+                            border.width: isSelected ? 2 : (hasWarnings ? 1 : 0)
+                            border.color: isSelected ? "#7fd6b4" : "#c98a3f"
                             Behavior on color { ColorAnimation { duration: 150 } }
 
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 16
-                                spacing: 14
+                            ColumnLayout {
+                                id: cardCol
+                                x: 16; y: 14
+                                width: parent.width - 32
+                                spacing: 8
 
-                                Rectangle {
-                                    width: 44; height: 44; radius: 10
-                                    color: isSelected ? "#0a4e3d" : "#10241f"
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: modelData.transport === "usb" ? "\u{1F5B4}" : "\u25A6"
-                                        font.pixelSize: 18
-                                    }
-                                }
-
-                                ColumnLayout {
-                                    spacing: 2
+                                RowLayout {
                                     Layout.fillWidth: true
-                                    Text { text: modelData.model + "  (" + modelData.name + ")"; color: "#e8f5ee"; font.pixelSize: 14; font.weight: Font.Medium }
-                                    Text {
-                                        text: modelData.sizeLabel + " \u00B7 " + modelData.transport.toUpperCase() + (modelData.isRemovable ? " \u00B7 removable" : "")
-                                        color: "#8fb3a4"; font.pixelSize: 12
+                                    spacing: 14
+
+                                    Rectangle {
+                                        width: 44; height: 44; radius: 10
+                                        color: isSelected ? "#0a4e3d" : "#10241f"
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelData.transport === "usb" ? "\u{1F5B4}" : "\u25A6"
+                                            font.pixelSize: 18
+                                        }
                                     }
+
+                                    ColumnLayout {
+                                        spacing: 2
+                                        Layout.fillWidth: true
+                                        Text { text: modelData.model + "  (" + modelData.name + ")"; color: "#e8f5ee"; font.pixelSize: 14; font.weight: Font.Medium }
+                                        Text {
+                                            text: modelData.sizeLabel + " \u00B7 " + modelData.transport.toUpperCase() + (modelData.isRemovable ? " \u00B7 removable" : "") + (modelData.isBlank ? " \u00B7 blank, no partitions" : "")
+                                            color: "#8fb3a4"; font.pixelSize: 12
+                                        }
+                                    }
+
+                                    Text { visible: isSelected; text: "\u2713"; color: "#fff"; font.pixelSize: 18 }
                                 }
 
-                                Text { visible: isSelected; text: "\u2713"; color: "#fff"; font.pixelSize: 18 }
+                                Repeater {
+                                    model: modelData.warnings
+                                    delegate: Text {
+                                        Layout.fillWidth: true
+                                        text: "\u26A0 " + modelData
+                                        color: "#f2c9a3"; font.pixelSize: 12; wrapMode: Text.WordWrap
+                                    }
+                                }
                             }
 
                             MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: wiz.selectedDisk = modelData }
@@ -605,6 +621,14 @@ Rectangle {
                     width: parent.width - 28
                     spacing: 4
                     Text { text: "\u26A0 Everything currently on " + (wiz.selectedDisk ? wiz.selectedDisk.path : "the selected disk") + " will be permanently erased."; color: "#f2a3a3"; font.pixelSize: 13; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                    Repeater {
+                        model: wiz.selectedDisk ? wiz.selectedDisk.warnings : []
+                        delegate: Text {
+                            Layout.fillWidth: true
+                            text: "  \u2022 " + modelData
+                            color: "#e0b3b3"; font.pixelSize: 12; wrapMode: Text.WordWrap
+                        }
+                    }
                     Text { text: "Type ERASE below (exactly, all caps) to enable the install button."; color: "#e0b3b3"; font.pixelSize: 12; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                 }
             }

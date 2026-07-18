@@ -13,6 +13,10 @@
 #include <QDebug>
 #include <QVector>
 #include <QPair>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonValue>
 
 namespace {
 const char *kMarkerPath = "/opt/roohaniye/data/.installed";
@@ -54,14 +58,36 @@ QString InstallerBackend::findRootDisk() const
     return "/dev/" + name;
 }
 
+namespace {
+// Human-readable size label shared by listDisks()/listDirectory().
+QString humanSize(qint64 bytes)
+{
+    if (bytes < 1024LL * 1024 * 1024)
+        return QString::number(bytes / (1024.0 * 1024.0), 'f', 0) + " MB";
+    return QString::number(bytes / (1024.0 * 1024.0 * 1024.0), 'f', 1) + " GB";
+}
+
+// lsblk SIZE with -b is plain bytes as a JSON number/string depending on
+// version; handle both.
+qint64 jsonSizeBytes(const QJsonValue &v)
+{
+    if (v.isDouble()) return static_cast<qint64>(v.toDouble());
+    return v.toString().toLongLong();
+}
+}
+
 QVariantList InstallerBackend::listDisks() const
 {
     QVariantList result;
     const QString rootDisk = findRootDisk();
 
     QProcess p;
-    // -d: disks only (no partitions), -n: no header, -b: bytes for size
-    p.start("lsblk", {"-d", "-n", "-b", "-o", "NAME,SIZE,MODEL,TRAN,RM,TYPE"});
+    // No -d this time: we want the partition ("children") tree too, so
+    // we can warn about existing partitions/encryption/other OSes
+    // before the user picks a disk to erase. -b: bytes for size, -J:
+    // JSON (far more robust to parse than the old fixed-column output,
+    // which broke whenever MODEL contained embedded spaces).
+    p.start("lsblk", {"-J", "-b", "-o", "NAME,SIZE,MODEL,TRAN,RM,TYPE,PTTYPE,FSTYPE,LABEL"});
     if (!p.waitForFinished(5000)) {
         qWarning() << "InstallerBackend::listDisks: lsblk failed to run";
         return result;
@@ -71,46 +97,74 @@ QVariantList InstallerBackend::listDisks() const
         return result;
     }
 
-    const QStringList lines = QString::fromUtf8(p.readAllStandardOutput())
-                                   .split('\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
-        const QStringList cols = line.simplified().split(' ');
-        if (cols.size() < 6) continue;
-        const QString name = cols.at(0);
-        const QString type = cols.last();
-        if (type != "disk") continue; // skip loop/rom/etc
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(p.readAllStandardOutput(), &perr);
+    if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
+        qWarning() << "InstallerBackend::listDisks: failed to parse lsblk JSON:" << perr.errorString();
+        return result;
+    }
 
+    const QJsonArray devices = doc.object().value("blockdevices").toArray();
+    for (const QJsonValue &dv : devices) {
+        const QJsonObject obj = dv.toObject();
+        if (obj.value("type").toString() != "disk") continue; // skip loop/rom/etc
+
+        const QString name = obj.value("name").toString();
         const QString path = "/dev/" + name;
         if (!rootDisk.isEmpty() && path == rootDisk) continue; // never offer the running disk
 
-        bool ok = false;
-        const qint64 bytes = cols.at(1).toLongLong(&ok);
-        if (!ok || bytes <= 0) continue;
+        const qint64 bytes = jsonSizeBytes(obj.value("size"));
+        if (bytes <= 0) continue;
 
-        // MODEL can be empty (col count still >= 6) or contain no spaces
-        // after simplified(); TRAN/RM/TYPE are the last three columns.
-        const QString tran = cols.at(cols.size() - 3);
-        const QString rm = cols.at(cols.size() - 2);
-        QString model;
-        if (cols.size() > 6) {
-            QStringList modelParts = cols.mid(2, cols.size() - 5);
-            model = modelParts.join(' ');
+        const QString tran = obj.value("tran").toString();
+        const QString model = obj.value("model").toString();
+        const bool removable = obj.value("rm").toBool();
+        const QString pttype = obj.value("pttype").toString(); // "gpt"/"dos"/"" (blank disk)
+
+        const QJsonArray children = obj.value("children").toArray();
+        const int partitionCount = children.size();
+        bool hasEncryption = false;
+        bool hasBitlocker = false;
+        bool hasWindows = false;
+        bool hasOtherLinux = false;
+
+        for (const QJsonValue &cv : children) {
+            const QJsonObject part = cv.toObject();
+            const QString fstype = part.value("fstype").toString().toLower();
+            if (fstype == "crypto_luks") hasEncryption = true;
+            else if (fstype == "bitlocker") hasBitlocker = true;
+            else if (fstype == "ntfs") hasWindows = true;
+            else if (fstype == "ext4" || fstype == "ext3" || fstype == "btrfs" || fstype == "xfs")
+                hasOtherLinux = true;
         }
 
-        QString sizeLabel;
-        if (bytes < 1024LL * 1024 * 1024)
-            sizeLabel = QString::number(bytes / (1024.0 * 1024.0), 'f', 0) + " MB";
-        else
-            sizeLabel = QString::number(bytes / (1024.0 * 1024.0 * 1024.0), 'f', 1) + " GB";
+        QVariantList warnings;
+        if (partitionCount > 0) {
+            warnings.append(QString("Disk has %1 existing partition(s) - ALL data will be permanently erased")
+                                 .arg(partitionCount));
+        }
+        if (hasEncryption)
+            warnings.append(QStringLiteral("Contains an encrypted (LUKS) partition"));
+        if (hasBitlocker)
+            warnings.append(QStringLiteral("Contains a BitLocker-encrypted Windows partition"));
+        if (hasWindows)
+            warnings.append(QStringLiteral("An existing Windows (NTFS) installation was detected"));
+        if (hasOtherLinux)
+            warnings.append(QStringLiteral("An existing Linux installation was detected"));
 
         QVariantMap dev;
         dev["path"] = path;
         dev["name"] = name;
-        dev["sizeLabel"] = sizeLabel;
+        dev["sizeLabel"] = humanSize(bytes);
         dev["sizeBytes"] = bytes;
         dev["model"] = model.isEmpty() ? QStringLiteral("Unknown disk") : model;
         dev["transport"] = tran.isEmpty() ? QStringLiteral("unknown") : tran;
-        dev["isRemovable"] = (rm == "1");
+        dev["isRemovable"] = removable;
+        dev["partitionTableType"] = pttype.isEmpty() ? QStringLiteral("none") : pttype;
+        dev["partitionCount"] = partitionCount;
+        dev["isBlank"] = (partitionCount == 0 && pttype.isEmpty());
+        dev["hasEncryption"] = (hasEncryption || hasBitlocker);
+        dev["warnings"] = warnings;
         result.append(dev);
     }
     return result;

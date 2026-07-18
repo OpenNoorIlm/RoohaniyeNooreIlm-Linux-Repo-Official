@@ -7,7 +7,17 @@ import QtMultimedia 5.15
 Window {
     id: root
     visible: true
-    visibility: Window.FullScreen
+    // Only force real fullscreen on the actual eglfs kiosk deployment
+    // (raw framebuffer, no window manager - there's no "windowed" mode
+    // to speak of there anyway). On a normal desktop session (xcb/
+    // wayland, i.e. dev testing on a laptop), stay a plain resizable
+    // window instead - this lets portrait-mode scaling/rotation be
+    // tested just by dragging the window into a tall, narrow shape with
+    // the mouse, with no need to touch real display orientation/xrandr/
+    // GNOME Settings at all. width/height below still default to the
+    // full screen size on open either way, just resizable afterward
+    // when not in the eglfs/FullScreen case.
+    visibility: (Qt.platform.pluginName === "eglfs") ? Window.FullScreen : Window.AutomaticVisibility
     width: Screen.width
     height: Screen.height
     x: 0
@@ -177,13 +187,27 @@ Window {
     // fitting it is therefore the window's height/width SWAPPED, since
     // a landscape-authored 1920x1080 canvas rotated on its side occupies
     // a portrait-shaped footprint. ----
-    readonly property real availW: portrait ? height : width
-    readonly property real availH: portrait ? width : height
+    // NOTE: uiScale is NOT simply availW/refW & availH/refH with availW/
+    // availH swapped for portrait - that under-scales, because rotating
+    // the canvas ALSO swaps which ref dimension (refW vs refH) maps onto
+    // which available dimension. In portrait, after the 90deg rotation
+    // below, the canvas's rendered footprint is refH-wide x refW-tall (its
+    // own width/height are swapped by the rotation) - so it must be fit
+    // by comparing width against refH and height against refW, not
+    // against refW/refH straight. Skipping this second swap was the bug:
+    // it produced a valid-looking but too-small scale (e.g. 0.5625
+    // instead of 1 on a 1920x1080 panel), which is why portrait rotated
+    // but never filled the screen. Landscape has no such swap since
+    // there's no rotation, so it stays refW/refH as before.
     // Guarded against width/height still being 0 for the first frame or
     // two before the window manager assigns real geometry (confirmed via
     // headless testing) - without this, the whole UI would render at
     // scale 0 (invisible) for a brief moment on every real boot.
-    readonly property real uiScale: (availW > 0 && availH > 0) ? Math.min(availW / refW, availH / refH) : 1
+    readonly property real uiScale: (width > 0 && height > 0)
+        ? (portrait
+            ? Math.min(width / refH, height / refW)
+            : Math.min(width / refW, height / refH))
+        : 1
 
     Item {
         id: virtualCanvas
@@ -349,7 +373,7 @@ Window {
                 border.width: 1
                 border.color: theme.dark ? "#22493f" : "#d7e6df"
                 Text { anchors.centerIn: parent; text: "\u2190"; font.pixelSize: 22; color: theme.subtext }
-                MouseArea { anchors.fill: parent; onClicked: { root.sounds.click(); root.goBack() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.click(); root.goBack() } }
             }
             Rectangle {
                 width: 56; height: 56; radius: 28
@@ -357,7 +381,7 @@ Window {
                 border.width: 1
                 border.color: theme.dark ? "#22493f" : "#d7e6df"
                 Text { anchors.centerIn: parent; text: "\u2302"; font.pixelSize: 22; color: theme.subtext }
-                MouseArea { anchors.fill: parent; onClicked: { root.sounds.click(); root.menuOrigin = ""; root.currentView = "home"; root.screenStack = [] } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.click(); root.menuOrigin = ""; root.currentView = "home"; root.screenStack = [] } }
             }
             Rectangle {
                 width: 56; height: 56; radius: 28
@@ -370,7 +394,7 @@ Window {
                     font.pixelSize: 20
                     color: (currentView === "home" && menuOrigin !== "") ? "#ffffff" : theme.subtext
                 }
-                MouseArea { anchors.fill: parent; onClicked: root.toggleMenu() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.toggleMenu() }
             }
             Rectangle {
                 width: 56; height: 56; radius: 28
@@ -378,7 +402,7 @@ Window {
                 border.width: 1
                 border.color: theme.dark ? "#22493f" : "#d7e6df"
                 Text { anchors.centerIn: parent; text: "\u27F3"; font.pixelSize: 22; color: theme.subtext }
-                MouseArea { anchors.fill: parent; onClicked: root.toggleOrientation() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.toggleOrientation() }
             }
         }
 

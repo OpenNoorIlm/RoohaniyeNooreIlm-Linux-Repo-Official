@@ -131,7 +131,7 @@ Rectangle {
                         Layout.preferredWidth: 76
                         Layout.preferredHeight: 32
                         Text { anchors.centerIn: parent; text: "Import"; color: "#ffffff"; font.pixelSize: 12; font.weight: Font.Medium }
-                        MouseArea { anchors.fill: parent; onClicked: connectorRoot.doImport(modelData) }
+                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: connectorRoot.doImport(modelData) }
                     }
                 }
 
@@ -253,7 +253,7 @@ Rectangle {
                 radius: 12
                 color: "#0f6e56"
                 Text { anchors.centerIn: parent; text: "Done"; color: "#ffffff"; font.pixelSize: 14; font.weight: Font.Medium }
-                MouseArea { anchors.fill: parent; onClicked: root.currentView = "home" }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.currentView = "home" }
             }
 
             Item { Layout.fillHeight: true }

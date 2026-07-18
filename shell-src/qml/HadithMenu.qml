@@ -41,7 +41,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
             }
             Text { text: "Hadith"; color: "#e8f5ee"; font.pixelSize: 22; font.weight: Font.Medium; Layout.leftMargin: 12 }
         }
@@ -208,7 +208,7 @@ Rectangle {
                     text: "\u2190"
                     color: "#7fd6b4"
                     font.pixelSize: 20
-                    MouseArea { anchors.fill: parent; onClicked: { menu.showSearch = false; searchField.text = "" } }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { menu.showSearch = false; searchField.text = "" } }
                 }
                 Text { text: "Search hadiths"; color: "#e8f5ee"; font.pixelSize: 18; font.weight: Font.Medium; Layout.leftMargin: 12 }
             }

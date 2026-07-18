@@ -56,7 +56,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
             }
             Text {
                 text: "Prayer times"
@@ -71,7 +71,7 @@ Rectangle {
                 text: "\u2699"
                 color: "#7fd6b4"
                 font.pixelSize: 18
-                MouseArea { anchors.fill: parent; onClicked: prayerRoot.showSettings = !prayerRoot.showSettings }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: prayerRoot.showSettings = !prayerRoot.showSettings }
             }
         }
 
@@ -98,7 +98,7 @@ Rectangle {
                 radius: 12
                 color: "#0f6e56"
                 Text { anchors.centerIn: parent; text: "Choose location"; color: "#fff"; font.pixelSize: 14; font.weight: Font.Medium }
-                MouseArea { anchors.fill: parent; onClicked: locationLoader.active = true }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: locationLoader.active = true }
             }
             Item { Layout.fillHeight: true; Layout.preferredHeight: 2 }
         }
@@ -123,7 +123,7 @@ Rectangle {
                     text: "Change"
                     color: "#7fd6b4"
                     font.pixelSize: 12
-                    MouseArea { anchors.fill: parent; onClicked: locationLoader.active = true }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: locationLoader.active = true }
                 }
             }
 
@@ -276,7 +276,7 @@ Rectangle {
                 radius: 12
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "Done"; color: "#dff2ea"; font.pixelSize: 14 }
-                MouseArea { anchors.fill: parent; onClicked: { prayerRoot.showSettings = false; prayerRoot.refresh() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { prayerRoot.showSettings = false; prayerRoot.refresh() } }
             }
         }
     }

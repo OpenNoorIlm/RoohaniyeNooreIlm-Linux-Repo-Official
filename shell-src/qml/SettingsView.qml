@@ -24,7 +24,7 @@ Rectangle {
                 text: "\u2190"
                 color: root.theme.accent
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
             }
             Text { text: "Settings"; color: root.theme.text; font.pixelSize: 20; font.weight: Font.Medium; Layout.leftMargin: 12 }
         }
@@ -65,7 +65,7 @@ Rectangle {
                         Repeater {
                             model: ["#7fd6b4", "#5fb3e8", "#e8b25f", "#e87f9f", "#b58fe8", "#8fe86f"]
                             delegate: Rectangle {
-                                width: 32; height: 32; radius: 16
+                                width: 44; height: 44; radius: 22
                                 color: modelData
                                 border.width: themeBackend.accentColor === modelData ? 3 : 0
                                 border.color: root.theme.text
@@ -110,7 +110,7 @@ Rectangle {
                             radius: 10
                             color: "#993c1d"
                             Text { anchors.centerIn: parent; text: "Reset"; color: "#fff"; font.pixelSize: 12 }
-                            MouseArea { anchors.fill: parent; onClicked: themeBackend.clearBackgroundImage() }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: themeBackend.clearBackgroundImage() }
                         }
                     }
                     Text {
@@ -301,7 +301,7 @@ Rectangle {
                 radius: 12
                 color: "#3c3489"
                 Text { anchors.centerIn: parent; text: "Restart"; color: "#fff"; font.pixelSize: 14 }
-                MouseArea { anchors.fill: parent; onClicked: { powerAction = "restart"; powerDialog.open() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { powerAction = "restart"; powerDialog.open() } }
             }
             Rectangle {
                 Layout.fillWidth: true
@@ -309,7 +309,7 @@ Rectangle {
                 radius: 12
                 color: "#993c1d"
                 Text { anchors.centerIn: parent; text: "Shut down"; color: "#fff"; font.pixelSize: 14 }
-                MouseArea { anchors.fill: parent; onClicked: { powerAction = "shutdown"; powerDialog.open() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { powerAction = "shutdown"; powerDialog.open() } }
             }
         }
 
@@ -351,7 +351,7 @@ Rectangle {
                         radius: 12
                         color: root.theme.cardAlt
                         Text { anchors.centerIn: parent; text: "Set Up Account"; color: "#fff"; font.pixelSize: 13 }
-                        MouseArea { anchors.fill: parent; onClicked: { accountDialog.isFirstAccount = true; accountDialog.open() } }
+                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { accountDialog.isFirstAccount = true; accountDialog.open() } }
                     }
                 }
 
@@ -381,7 +381,7 @@ Rectangle {
                             radius: 12
                             color: "#173832"
                             Text { anchors.centerIn: parent; text: "Lock Now"; color: root.theme.text; font.pixelSize: 13 }
-                            MouseArea { anchors.fill: parent; onClicked: authBackend.lockNow() }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: authBackend.lockNow() }
                         }
                         Rectangle {
                             Layout.fillWidth: true
@@ -389,7 +389,7 @@ Rectangle {
                             radius: 12
                             color: "#173832"
                             Text { anchors.centerIn: parent; text: "Log Out"; color: root.theme.text; font.pixelSize: 13 }
-                            MouseArea { anchors.fill: parent; onClicked: authBackend.logout() }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: authBackend.logout() }
                         }
                     }
 
@@ -418,7 +418,7 @@ Rectangle {
                                         color: authBackend.autoLockMinutes === modelData.value ? "#10241f" : root.theme.subtext
                                         font.pixelSize: 12
                                     }
-                                    MouseArea { anchors.fill: parent; onClicked: authBackend.setAutoLockMinutes(modelData.value) }
+                                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: authBackend.setAutoLockMinutes(modelData.value) }
                                 }
                             }
                         }
@@ -432,7 +432,7 @@ Rectangle {
                         radius: 12
                         color: "#173832"
                         Text { anchors.centerIn: parent; text: "Change Password"; color: root.theme.text; font.pixelSize: 13 }
-                        MouseArea { anchors.fill: parent; onClicked: { changePassDialog.errorText = ""; oldPassField.text = ""; newPassField.text = ""; changePassDialog.open() } }
+                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { changePassDialog.errorText = ""; oldPassField.text = ""; newPassField.text = ""; changePassDialog.open() } }
                     }
 
                     // Admin: manage users
@@ -473,7 +473,7 @@ Rectangle {
                             radius: 12
                             color: root.theme.cardAlt
                             Text { anchors.centerIn: parent; text: "Add User"; color: "#fff"; font.pixelSize: 13 }
-                            MouseArea { anchors.fill: parent; onClicked: { accountDialog.isFirstAccount = false; accountDialog.errorText = ""; accountDialog.open() } }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { accountDialog.isFirstAccount = false; accountDialog.errorText = ""; accountDialog.open() } }
                         }
                     }
                 }
@@ -729,7 +729,7 @@ Rectangle {
                     text: "\u2715"
                     color: root.theme.accent
                     font.pixelSize: 18
-                    MouseArea { anchors.fill: parent; onClicked: bgPicker.visible = false }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: bgPicker.visible = false }
                 }
                 Text { text: "Choose a background image"; color: "#e8f5ee"; font.pixelSize: 17; font.weight: Font.Medium; Layout.leftMargin: 12 }
             }

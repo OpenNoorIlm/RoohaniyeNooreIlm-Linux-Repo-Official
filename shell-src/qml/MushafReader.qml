@@ -85,7 +85,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: { view.saveCurrentProgress(); root.goBack() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { view.saveCurrentProgress(); root.goBack() } }
             }
             ColumnLayout {
                 Layout.fillWidth: true
@@ -105,13 +105,13 @@ Rectangle {
                 }
             }
             Rectangle {
-                width: 36; height: 36; radius: 18
+                width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2212"; color: "#7fd6b4"; font.pixelSize: 18 }
                 MouseArea { anchors.fill: parent; onClicked: zoomArea.zoomStep(-1) }
             }
             Rectangle {
-                width: 36; height: 36; radius: 18
+                width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "+"; color: "#7fd6b4"; font.pixelSize: 18 }
                 MouseArea { anchors.fill: parent; onClicked: zoomArea.zoomStep(1) }
@@ -327,7 +327,7 @@ Rectangle {
                 radius: 10
                 color: view.currentPage > view.minPage ? "#0f6e56" : "#173832"
                 Text { anchors.centerIn: parent; text: "\u2190 Previous"; color: "#fff"; font.pixelSize: 13 }
-                MouseArea { anchors.fill: parent; onClicked: view.goToPage(view.currentPage - 1) }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.goToPage(view.currentPage - 1) }
             }
 
             Rectangle {
@@ -368,7 +368,7 @@ Rectangle {
                 radius: 10
                 color: view.currentPage < view.maxPage ? "#0f6e56" : "#173832"
                 Text { anchors.centerIn: parent; text: "Next \u2192"; color: "#fff"; font.pixelSize: 13 }
-                MouseArea { anchors.fill: parent; onClicked: view.goToPage(view.currentPage + 1) }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.goToPage(view.currentPage + 1) }
             }
         }
     }

@@ -94,14 +94,14 @@ Rectangle {
             color: "#7fd6b4"
             font.pixelSize: 20
             visible: step === 0
-            MouseArea { anchors.fill: parent; onClicked: root.currentView = "home" }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.currentView = "home" }
         }
         Text {
             text: "\u2190 Back"
             color: "#7fd6b4"
             font.pixelSize: 16
             visible: step > 0 && step < 5
-            MouseArea { anchors.fill: parent; onClicked: wiz.step -= 1 }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: wiz.step -= 1 }
         }
         Text {
             text: "Install RoohaniyeNooreIlm"
@@ -218,7 +218,7 @@ Rectangle {
                 font.pixelSize: 13
                 Layout.alignment: Qt.AlignHCenter
                 Layout.bottomMargin: 8
-                MouseArea { anchors.fill: parent; onClicked: root.currentView = "home" }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.currentView = "home" }
             }
         }
 
@@ -245,7 +245,7 @@ Rectangle {
                     text: "\u27F3 Refresh"
                     color: "#7fd6b4"
                     font.pixelSize: 12
-                    MouseArea { anchors.fill: parent; onClicked: wiz.refreshDisks() }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: wiz.refreshDisks() }
                 }
             }
 
@@ -307,7 +307,7 @@ Rectangle {
                                 Text { visible: isSelected; text: "\u2713"; color: "#fff"; font.pixelSize: 18 }
                             }
 
-                            MouseArea { anchors.fill: parent; onClicked: wiz.selectedDisk = modelData }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: wiz.selectedDisk = modelData }
                         }
                     }
                 }
@@ -409,7 +409,7 @@ Rectangle {
                 radius: 12
                 color: "#0f6e56"
                 Text { anchors.centerIn: parent; text: "Continue"; color: "#fff"; font.pixelSize: 15; font.weight: Font.Medium }
-                MouseArea { anchors.fill: parent; onClicked: wiz.step = 3 }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: wiz.step = 3 }
             }
         }
 
@@ -894,13 +894,13 @@ Rectangle {
                         border.width: 2
                         border.color: "#7fd6b4"
                         Text { anchors.centerIn: parent; text: "\u2713"; color: "#fff"; font.pixelSize: 15; visible: resultStep.usbRemoved }
-                        MouseArea { anchors.fill: parent; onClicked: resultStep.usbRemoved = !resultStep.usbRemoved }
+                        MouseArea { anchors.fill: parent; anchors.margins: -9; onClicked: resultStep.usbRemoved = !resultStep.usbRemoved }
                     }
                     Text {
                         text: "I've removed the USB drive"
                         color: "#e8f5ee"; font.pixelSize: 14
                         Layout.fillWidth: true
-                        MouseArea { anchors.fill: parent; onClicked: resultStep.usbRemoved = !resultStep.usbRemoved }
+                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: resultStep.usbRemoved = !resultStep.usbRemoved }
                     }
                 }
             }

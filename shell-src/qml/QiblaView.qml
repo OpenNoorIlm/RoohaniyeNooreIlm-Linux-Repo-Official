@@ -31,7 +31,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
             }
             Text {
                 text: "Qibla"
@@ -65,7 +65,7 @@ Rectangle {
                 radius: 12
                 color: "#0f6e56"
                 Text { anchors.centerIn: parent; text: "Choose location"; color: "#fff"; font.pixelSize: 14; font.weight: Font.Medium }
-                MouseArea { anchors.fill: parent; onClicked: locationLoader.active = true }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: locationLoader.active = true }
             }
             Item { Layout.fillHeight: true }
         }
@@ -183,7 +183,7 @@ Rectangle {
                     font.pixelSize: 12
                     Layout.alignment: Qt.AlignHCenter
                     Layout.topMargin: 4
-                    MouseArea { anchors.fill: parent; onClicked: locationLoader.active = true }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: locationLoader.active = true }
                 }
             }
         }

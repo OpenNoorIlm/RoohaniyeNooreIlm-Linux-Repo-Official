@@ -154,7 +154,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: { saveCurrentProgress(); root.goBack() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { saveCurrentProgress(); root.goBack() } }
             }
 
             ColumnLayout {
@@ -179,14 +179,14 @@ Rectangle {
 
             Rectangle {
                 visible: view.mode !== "selection" && view.book !== ""
-                width: 36; height: 36; radius: 18
+                width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2637"; color: "#7fd6b4"; font.pixelSize: 15 }
                 MouseArea { anchors.fill: parent; onClicked: showTopicPicker = true }
             }
 
             Rectangle {
-                width: 36; height: 36; radius: 18
+                width: 44; height: 44; radius: 22
                 color: selectionMode ? "#0f6e56" : "#173832"
                 Text { anchors.centerIn: parent; text: "\u2611"; color: selectionMode ? "#fff" : "#7fd6b4"; font.pixelSize: 14 }
                 MouseArea {
@@ -196,7 +196,7 @@ Rectangle {
             }
 
             Rectangle {
-                width: 36; height: 36; radius: 18
+                width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2699"; color: "#7fd6b4"; font.pixelSize: 15 }
                 MouseArea { anchors.fill: parent; onClicked: showSettings = true }
@@ -321,7 +321,7 @@ Rectangle {
                 font.pixelSize: 14
                 font.weight: Font.Medium
             }
-            MouseArea { anchors.fill: parent; onClicked: view.confirmSelection() }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.confirmSelection() }
         }
     }
 
@@ -412,7 +412,7 @@ Rectangle {
                         Repeater {
                             model: [ {k:"small",l:"A"}, {k:"medium",l:"A"}, {k:"large",l:"A"} ]
                             delegate: Rectangle {
-                                Layout.fillWidth: true; height: 38; radius: 10
+                                Layout.fillWidth: true; height: 44; radius: 10
                                 color: fontSizeKey === modelData.k ? "#0f6e56" : "#10241f"
                                 Text {
                                     anchors.centerIn: parent
@@ -432,7 +432,7 @@ Rectangle {
                     radius: 10
                     color: "#0f6e56"
                     Text { anchors.centerIn: parent; text: "Done"; color: "#fff"; font.pixelSize: 13 }
-                    MouseArea { anchors.fill: parent; onClicked: { showSettings = false; persistPrefs() } }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { showSettings = false; persistPrefs() } }
                 }
             }
         }

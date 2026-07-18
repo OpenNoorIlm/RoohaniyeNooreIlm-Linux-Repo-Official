@@ -51,7 +51,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: picker.closed() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: picker.closed() }
             }
             Text {
                 text: "Surahs"
@@ -117,7 +117,7 @@ Rectangle {
                     spacing: 14
 
                     Rectangle {
-                        width: 34; height: 34; radius: 17
+                        width: 44; height: 44; radius: 22
                         color: "#0f6e56"
                         Text {
                             anchors.centerIn: parent
@@ -179,7 +179,7 @@ Rectangle {
                 font.pixelSize: 14
                 font.weight: Font.Medium
             }
-            MouseArea { anchors.fill: parent; onClicked: picker.confirmSelection() }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: picker.confirmSelection() }
         }
     }
 }

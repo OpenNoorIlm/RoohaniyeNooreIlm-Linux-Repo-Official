@@ -88,11 +88,11 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
             }
             Text { text: "Reminders"; color: "#e8f5ee"; font.pixelSize: 20; font.weight: Font.Medium; Layout.leftMargin: 12; Layout.fillWidth: true }
             Rectangle {
-                width: 40; height: 40; radius: 20
+                width: 44; height: 44; radius: 22
                 color: "#0f6e56"
                 Text { anchors.centerIn: parent; text: "+"; color: "#fff"; font.pixelSize: 22 }
                 MouseArea { anchors.fill: parent; onClicked: { root.sounds.click(); view.openAdd("") } }
@@ -111,7 +111,7 @@ Rectangle {
                     radius: 15
                     color: "#173832"
                     Text { id: sugText; anchors.centerIn: parent; text: modelData; color: "#9fc7b7"; font.pixelSize: 12 }
-                    MouseArea { anchors.fill: parent; onClicked: { root.sounds.click(); view.openAdd(modelData) } }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.click(); view.openAdd(modelData) } }
                 }
             }
         }
@@ -227,7 +227,7 @@ Rectangle {
                 Repeater {
                     model: view.dayLabels
                     delegate: Rectangle {
-                        width: 40; height: 30; radius: 8
+                        width: 44; height: 44; radius: 10
                         color: view.editDays.indexOf(index) !== -1 ? "#0f6e56" : "#173832"
                         Text { anchors.centerIn: parent; text: modelData; color: "#dff2ea"; font.pixelSize: 11 }
                         MouseArea { anchors.fill: parent; onClicked: view.toggleEditDay(index) }

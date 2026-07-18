@@ -31,7 +31,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: picker.closed() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: picker.closed() }
             }
             Text {
                 text: "Set location"
@@ -94,7 +94,7 @@ Rectangle {
                     color: "#fff"
                     font.pixelSize: 14
                 }
-                MouseArea { anchors.fill: parent; onClicked: picker.customMode = true }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: picker.customMode = true }
             }
         }
 
@@ -150,7 +150,7 @@ Rectangle {
                     radius: 12
                     color: "#173832"
                     Text { anchors.centerIn: parent; text: "Back"; color: "#dff2ea"; font.pixelSize: 14 }
-                    MouseArea { anchors.fill: parent; onClicked: picker.customMode = false }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: picker.customMode = false }
                 }
                 Rectangle {
                     Layout.fillWidth: true

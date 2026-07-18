@@ -95,7 +95,7 @@ Rectangle {
                     radius: 10
                     color: root.theme.cardAlt
                     Text { anchors.centerIn: parent; text: "Install"; color: "#fff"; font.pixelSize: 12; font.weight: Font.Medium }
-                    MouseArea { anchors.fill: parent; onClicked: { root.sounds.click(); root.navigateTo("installer") } }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.click(); root.navigateTo("installer") } }
                 }
             }
         }

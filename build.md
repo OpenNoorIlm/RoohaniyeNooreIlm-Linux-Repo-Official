@@ -35,6 +35,29 @@ project root and update it if paths change.
 Use this path for normal day-to-day work: you edited a `.cpp`/`.h`/`.qml`
 file and want a fresh ISO to test.
 
+**As of this writing, all six steps below are wrapped into one script:**
+`live-build/build.sh` (run with `sudo`). It rebuilds the binary, checks
+for missing shared libs, stages databases into the chroot, rebuilds the
+squashfs, and rebuilds the ISO with an auto-incrementing `vgrubN` name -
+same steps as documented here, just scripted. Flags control which
+databases get staged beyond the always-included `quran_text.db` +
+`hadiths.db`:
+
+```bash
+cd ~/Downloads/RoohaniyeNoorIlmLinux/live-build
+sudo bash build.sh                       # base only (small ISO)
+sudo bash build.sh --include-quran-audio # + quran_audio.db (~21GB)
+sudo bash build.sh --include-mushaf      # + mushafs.db (~5.4GB, full-page scans)
+sudo bash build.sh --include-all         # both of the above
+```
+
+`quran_audio.db` and `mushafs.db` are sourced from `/opt/roohaniye/data/`
+on the dev machine (not from the project root - the project root only
+carries the small `quran_text.db`/`hadiths.db` plus the deprecated,
+unused `quran_audio_embedded.db`). The manual steps below are still the
+reference for what the script does and for troubleshooting if it fails
+partway through.
+
 ### 1. Rebuild the binary
 
 ```bash

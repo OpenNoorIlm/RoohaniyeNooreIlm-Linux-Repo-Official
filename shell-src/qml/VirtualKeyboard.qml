@@ -81,7 +81,7 @@ Rectangle {
                 width: 30; height: 30; radius: 8
                 color: "transparent"
                 Text { anchors.centerIn: parent; text: "\u25BC"; color: theme.subtext; font.pixelSize: 13 }
-                MouseArea { anchors.fill: parent; onClicked: kb.hideRequested() }
+                MouseArea { anchors.fill: parent; anchors.margins: -7; onClicked: kb.hideRequested() }
             }
         }
 
@@ -135,7 +135,7 @@ Rectangle {
                 width: 60; height: 44; radius: 8
                 color: theme.dark ? "#0f2b25" : "#f1f6f3"
                 Text { anchors.centerIn: parent; text: kb.symbolsOn ? "ABC" : "123"; color: theme.text; font.pixelSize: 13 }
-                MouseArea { anchors.fill: parent; onClicked: kb.symbolsOn = !kb.symbolsOn }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: kb.symbolsOn = !kb.symbolsOn }
             }
             Rectangle {
                 Layout.fillWidth: true

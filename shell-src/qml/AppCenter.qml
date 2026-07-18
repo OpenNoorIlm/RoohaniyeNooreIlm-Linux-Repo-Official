@@ -53,7 +53,7 @@ Rectangle {
                         text: "\u2190"
                         color: "#7fd6b4"
                         font.pixelSize: 18
-                        MouseArea { anchors.fill: parent; onClicked: root.goBack() }
+                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
                     }
                     Text { text: "App Center"; color: "#e8f5ee"; font.pixelSize: 15; font.weight: Font.Medium; Layout.leftMargin: 10 }
                 }
@@ -253,7 +253,7 @@ Rectangle {
                                 Layout.fillWidth: true
                             }
                             Rectangle {
-                                width: 130; height: 34; radius: 8
+                                width: 130; height: 44; radius: 10
                                 color: "#0f6e56"
                                 Text { anchors.centerIn: parent; text: "Update all"; color: "#fff"; font.pixelSize: 12 }
                                 MouseArea {
@@ -292,7 +292,7 @@ Rectangle {
                                         width: 80; height: 30; radius: 8
                                         color: "#0f6e56"
                                         Text { anchors.centerIn: parent; text: "Update"; color: "#fff"; font.pixelSize: 12 }
-                                        MouseArea { anchors.fill: parent; onClicked: appCenter.installApp(modelData.id) }
+                                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: appCenter.installApp(modelData.id) }
                                     }
                                 }
                             }
@@ -341,7 +341,7 @@ Rectangle {
                                         width: 90; height: 30; radius: 8
                                         color: "#3a1f1f"
                                         Text { anchors.centerIn: parent; text: "Uninstall"; color: "#e8a89c"; font.pixelSize: 12 }
-                                        MouseArea { anchors.fill: parent; onClicked: appCenter.uninstallApp(modelData.id) }
+                                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: appCenter.uninstallApp(modelData.id) }
                                     }
                                 }
                             }

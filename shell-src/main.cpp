@@ -25,11 +25,27 @@
 
 int main(int argc, char *argv[])
 {
-    // Force eglfs only if the platform wasn't already chosen by the
-    // environment (lets developers override with QT_QPA_PLATFORM=xcb
-    // for windowed testing during development).
+    // Force eglfs only if BOTH: (a) the platform wasn't already chosen by
+    // the environment, AND (b) there's no existing desktop session
+    // (X11/Wayland) already running. eglfs grabs the raw DRM/KMS display
+    // and the raw evdev/libinput input devices directly - correct on the
+    // bare-metal live ISO (no compositor present at all), but on a dev
+    // machine with GNOME/X11/Wayland already running, forcing eglfs makes
+    // this app fight the running desktop for the screen AND steal mouse/
+    // keyboard input away from it system-wide - which looks exactly like
+    // "nothing accepts input anymore", anywhere, the instant the app
+    // starts (not something triggered by any specific button). Checking
+    // DISPLAY/WAYLAND_DISPLAY is the standard way to detect "a desktop
+    // session is already here" - if either is set, let Qt auto-pick the
+    // normal xcb/wayland plugin instead, same as any regular desktop app.
+    // QT_QPA_PLATFORM=xcb (or =eglfs) can still be set explicitly to
+    // override this either direction, on the ISO or on a dev machine.
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
-        qputenv("QT_QPA_PLATFORM", "eglfs");
+        bool hasDesktopSession = !qEnvironmentVariableIsEmpty("DISPLAY")
+            || !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY");
+        if (!hasDesktopSession) {
+            qputenv("QT_QPA_PLATFORM", "eglfs");
+        }
     }
 
     QGuiApplication app(argc, argv);

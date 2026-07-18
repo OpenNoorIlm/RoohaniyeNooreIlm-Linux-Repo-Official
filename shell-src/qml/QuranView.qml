@@ -266,7 +266,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; onClicked: { saveCurrentProgress(); audioBackend.stop(); root.goBack() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -12; onClicked: { saveCurrentProgress(); audioBackend.stop(); root.goBack() } }
             }
 
             Rectangle {
@@ -301,7 +301,7 @@ Rectangle {
             }
 
             Rectangle {
-                width: 36; height: 36; radius: 18
+                width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2637"; color: "#7fd6b4"; font.pixelSize: 15 }
                 MouseArea { anchors.fill: parent; onClicked: showJuzPicker = true }
@@ -309,7 +309,7 @@ Rectangle {
 
             Rectangle {
                 visible: layoutMode === "reading" && selectedReciterId !== ""
-                width: 36; height: 36; radius: 18
+                width: 44; height: 44; radius: 22
                 color: ayahSelectionMode ? "#0f6e56" : "#173832"
                 Text { anchors.centerIn: parent; text: "\u2611"; color: ayahSelectionMode ? "#fff" : "#7fd6b4"; font.pixelSize: 14 }
                 MouseArea {
@@ -322,7 +322,7 @@ Rectangle {
             }
 
             Rectangle {
-                width: 36; height: 36; radius: 18
+                width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2699"; color: "#7fd6b4"; font.pixelSize: 15 }
                 MouseArea { anchors.fill: parent; onClicked: showSettings = true }
@@ -412,7 +412,7 @@ Rectangle {
                             }
                             Rectangle {
                                 visible: !ayahSelectionMode && selectedReciterId !== ""
-                                width: 34; height: 34; radius: 17
+                                width: 44; height: 44; radius: 22
                                 color: view.isCurrentAudioVerse(modelData.surah, modelData.ayah) ? "#0f6e56" : "#20463c"
                                 Text {
                                     anchors.centerIn: parent
@@ -487,7 +487,7 @@ Rectangle {
                 font.pixelSize: 14
                 font.weight: Font.Medium
             }
-            MouseArea { anchors.fill: parent; onClicked: view.confirmAyahSelection() }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.confirmAyahSelection() }
         }
 
         // ---- MUSHAF (Hafizi) MODE: dense Arabic-only, paginated ----
@@ -674,7 +674,7 @@ Rectangle {
                         color: audioBackend.loopMode !== 0 ? "#7fd6b4" : "#8fb3a4"
                         font.pixelSize: 14
                     }
-                    MouseArea { anchors.fill: parent; onClicked: view.cycleLoopMode() }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.cycleLoopMode() }
                 }
 
                 Rectangle {
@@ -789,16 +789,16 @@ Rectangle {
                         spacing: 8
                         Layout.fillWidth: true
                         Rectangle {
-                            Layout.fillWidth: true; height: 38; radius: 10
+                            Layout.fillWidth: true; height: 44; radius: 10
                             color: layoutMode === "reading" ? "#0f6e56" : "#10241f"
                             Text { anchors.centerIn: parent; text: "Reading"; color: "#fff"; font.pixelSize: 12 }
-                            MouseArea { anchors.fill: parent; onClicked: layoutMode = "reading" }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: layoutMode = "reading" }
                         }
                         Rectangle {
-                            Layout.fillWidth: true; height: 38; radius: 10
+                            Layout.fillWidth: true; height: 44; radius: 10
                             color: layoutMode === "mushaf" ? "#0f6e56" : "#10241f"
                             Text { anchors.centerIn: parent; text: "Mushaf (Hafizi)"; color: "#fff"; font.pixelSize: 12 }
-                            MouseArea { anchors.fill: parent; onClicked: { layoutMode = "mushaf"; loadPage() } }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { layoutMode = "mushaf"; loadPage() } }
                         }
                     }
                 }
@@ -834,7 +834,7 @@ Rectangle {
                         Repeater {
                             model: [ {k:"small",l:"A"}, {k:"medium",l:"A"}, {k:"large",l:"A"} ]
                             delegate: Rectangle {
-                                Layout.fillWidth: true; height: 38; radius: 10
+                                Layout.fillWidth: true; height: 44; radius: 10
                                 color: fontSizeKey === modelData.k ? "#0f6e56" : "#10241f"
                                 Text {
                                     anchors.centerIn: parent
@@ -854,7 +854,7 @@ Rectangle {
                     radius: 10
                     color: "#0f6e56"
                     Text { anchors.centerIn: parent; text: "Done"; color: "#fff"; font.pixelSize: 13 }
-                    MouseArea { anchors.fill: parent; onClicked: { showSettings = false; persistPrefs() } }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { showSettings = false; persistPrefs() } }
                 }
             }
         }

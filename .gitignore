@@ -6,8 +6,6 @@ live-build/
 quran_audio_embedded.db
 quran_audio_embedded.verses_backup.json
 quran_audio.db
-quran_text.db
-hadiths.db
 
 # --- Build artifacts ---
 shell-src/build/

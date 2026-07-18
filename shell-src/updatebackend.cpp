@@ -9,6 +9,8 @@
 #include <QDir>
 #include <QSysInfo>
 #include <QVersionNumber>
+#include <QTimer>
+#include <QTextStream>
 
 UpdateBackend::UpdateBackend(QObject *parent)
     : QObject(parent)
@@ -176,9 +178,72 @@ void UpdateBackend::downloadUpdate()
 
 QString UpdateBackend::applyInstructions() const
 {
-    return "This update has been downloaded and checksum-verified, but "
-           "applying an OS image update is a manual step on this device "
-           "(it depends on your hardware's partition layout) and isn't "
-           "done automatically. See the app's documentation for how to "
-           "apply it, or ask on the project's support channels.";
+    return "This update has been downloaded and checksum-verified. It "
+           "will install itself and reboot automatically within a "
+           "moment - no further action needed.";
+}
+
+void UpdateBackend::startAutoUpdateCycle(int intervalHours)
+{
+    if (m_autoCycleStarted) return;
+    m_autoCycleStarted = true;
+
+    // Chain check -> download -> apply with no user interaction. These
+    // connections stay live for the whole process lifetime, so a manual
+    // "Check for updates" tap from the UI chains through automatically
+    // too - there's deliberately only one path through this class now,
+    // not a separate "peek without installing" mode.
+    connect(this, &UpdateBackend::checkFinished, this,
+            [this](bool available, const QString &, const QString &) {
+                if (available && !m_busy) downloadUpdate();
+            });
+    connect(this, &UpdateBackend::downloadFinished, this,
+            [this](bool success, const QString &, const QString &) {
+                if (success) applyUpdate();
+            });
+
+    // First check shortly after startup rather than instantly, so it
+    // doesn't compete with the app's own boot-time DB-opening work.
+    QTimer::singleShot(2 * 60 * 1000, this, &UpdateBackend::checkForUpdate);
+
+    auto *timer = new QTimer(this);
+    timer->setInterval(qMax(1, intervalHours) * 3600 * 1000);
+    connect(timer, &QTimer::timeout, this, &UpdateBackend::checkForUpdate);
+    timer->start();
+}
+
+void UpdateBackend::applyUpdate()
+{
+    if (m_pendingVersion.isEmpty() || m_pendingType.isEmpty()) {
+        setStatus("No downloaded update staged to apply.");
+        return;
+    }
+
+    // Matches the exact path downloadUpdate() wrote to and verified.
+    const QString pkgPath = QString("/opt/roohaniye/updates/%1.%2")
+                                 .arg(m_pendingVersion, m_pendingType);
+    if (!QFile::exists(pkgPath)) {
+        setStatus("Staged update file is missing.");
+        return;
+    }
+
+    const QString markerPath = "/opt/roohaniye/updates/pending.marker";
+    QFile marker(markerPath);
+    if (!marker.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        setStatus("Couldn't stage the update for install.");
+        return;
+    }
+    {
+        QTextStream ts(&marker);
+        ts << m_pendingVersion << "\n" << pkgPath << "\n";
+    }
+    marker.close();
+
+    setStatus(QString("Update %1 verified - installing and rebooting shortly…").arg(m_pendingVersion));
+    emit updateStaged(m_pendingVersion);
+    // roohaniye-updater.path (root, systemd) takes it from here: fires
+    // roohaniye-updater.service -> apply-update.sh, which stops this
+    // app, extracts the archive over /, runs postinst.sh if present,
+    // and reboots. See updatebackend.h for why this isn't done via
+    // pkexec from this unprivileged process.
 }

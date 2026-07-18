@@ -1,10 +1,12 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 
-// "Updates" app: check the official distro-download repo for a newer OS
-// image, download + sha256-verify it. Backed by updateBackend. Does NOT
-// apply/flash the update automatically - see updatebackend.h for why;
-// once downloaded+verified this screen just shows applyInstructions().
+// "Updates" app: shows status for the fully-automatic background update
+// cycle (check -> download -> verify -> stage -> reboot, all on its own -
+// see updatebackend.h). This screen doesn't drive that cycle, it just
+// reflects it - the "Check for updates" button below still works as a
+// manual nudge, but once a newer version is found it installs itself
+// the same as if the timer had found it.
 Rectangle {
     id: updatesRoot
     anchors.fill: parent
@@ -17,6 +19,8 @@ Rectangle {
     property bool downloaded: false
     property string downloadedPath: ""
     property string downloadError: ""
+    property bool staged: false
+    property string stagedVersion: ""
 
     Connections {
         target: updateBackend
@@ -30,6 +34,10 @@ Rectangle {
             updatesRoot.downloaded = success
             updatesRoot.downloadedPath = path
             updatesRoot.downloadError = success ? "" : message
+        }
+        function onUpdateStaged(version) {
+            updatesRoot.staged = true
+            updatesRoot.stagedVersion = version
         }
     }
 
@@ -164,7 +172,7 @@ Rectangle {
             }
 
             ColumnLayout {
-                visible: updatesRoot.downloaded
+                visible: updatesRoot.downloaded && !updatesRoot.staged
                 spacing: 8
                 Layout.fillWidth: true
                 Text {
@@ -182,6 +190,25 @@ Rectangle {
                 }
                 Text {
                     text: updateBackend.applyInstructions()
+                    color: "#c9b98a"
+                    font.pixelSize: 13
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                }
+            }
+
+            ColumnLayout {
+                visible: updatesRoot.staged
+                spacing: 8
+                Layout.fillWidth: true
+                Text {
+                    text: "Installing " + updatesRoot.stagedVersion + "\u2026"
+                    color: "#7fd6b4"
+                    font.pixelSize: 15
+                    font.weight: Font.Medium
+                }
+                Text {
+                    text: "The device will restart on its own in a moment to finish installing."
                     color: "#c9b98a"
                     font.pixelSize: 13
                     wrapMode: Text.WordWrap

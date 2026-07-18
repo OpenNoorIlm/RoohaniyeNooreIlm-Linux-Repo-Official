@@ -125,6 +125,13 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("reminderBackend", &reminderBackend);
     engine.rootContext()->setContextProperty("themeBackend", &themeBackend);
     engine.rootContext()->setContextProperty("authBackend", &authBackend);
+    // Fully-automatic background OS updates: checks periodically,
+    // downloads+verifies, and stages for install with no user tap
+    // needed - see updatebackend.h for the full check->download->apply
+    // handoff and why the actual privileged apply step happens outside
+    // this process. This is a deliberate no-safety-net choice; see the
+    // same comment for the accepted tradeoff.
+    updateBackend.startAutoUpdateCycle();
     // Real touchscreen detection (not a guess/env-var check) - QTouchDevice::devices()
     // reflects what the windowing system (xcb/eglfs) actually reports as
     // registered touch input hardware. Drives the virtual keyboard's

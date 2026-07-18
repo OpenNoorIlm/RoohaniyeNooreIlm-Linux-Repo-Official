@@ -1,18 +1,38 @@
 // UpdateBackend: checks the official distro-download repo
 // (OpenNoorIlm/RoohaniyeNooreIlm-Linux-Repo-Official) for a newer OS
-// image, and downloads+sha256-verifies it if the user chooses to. This is
-// the ONLY sanctioned source for OS updates - same "curated, checksum-
-// verified, no arbitrary downloads" philosophy as AppCenter, just for the
-// OS image itself instead of individual apps.
+// image, downloads+sha256-verifies it, and stages it for install - all
+// fully automatically, no user tap required (see startAutoUpdateCycle()).
+// This is the ONLY sanctioned source for OS updates - same "curated,
+// checksum-verified, no arbitrary downloads" philosophy as AppCenter,
+// just for the OS image itself instead of individual apps.
 //
-// IMPORTANT SCOPE NOTE: this class checks for and downloads an update
-// image; it does NOT apply/flash it. Actually writing a new OS image over
-// the running system is destructive and highly hardware/partition-layout
-// specific (different on an x86 laptop vs a Raspberry-Pi-class ARM
-// board), so that step is deliberately left as a manual, explicit action
-// for the user to perform (or a future, carefully-designed separate
-// tool) rather than something this class does silently. See
-// `applyInstructions()`.
+// SCOPE / PRIVILEGE SPLIT - READ BEFORE TOUCHING THIS CLASS:
+// This process runs unprivileged as `ubuntu` (see roohaniye-kiosk.service).
+// It deliberately does NOT try to apply the update itself via pkexec:
+// pkexec needs an interactive graphical polkit agent to click "Authenticate",
+// and this eglfs kiosk session has no desktop environment / polkit agent
+// running at all - a pkexec call here would just hang or fail with no
+// one able to approve it. Instead:
+//   1. This class (unprivileged) checks, downloads, and sha256-verifies
+//      into /opt/roohaniye/updates/ (pre-created ubuntu-owned in the
+//      image - see live-build notes), then calls applyUpdate(), which
+//      just writes a small plaintext marker file there.
+//   2. A root-owned systemd path unit (roohaniye-updater.path) watches
+//      for that marker file with no polkit/human involved - systemd
+//      units aren't gated by interactive auth, they just run as
+//      whatever User= they're configured for (root, here).
+//   3. When the marker appears, roohaniye-updater.service fires
+//      /opt/roohaniye/bin/apply-update.sh as root, which stops the
+//      kiosk service, extracts the verified archive over /, runs an
+//      optional postinst.sh from the package (for OS-level tweaks like
+//      systemd unit/group changes - the same kind of fix this session
+//      made to the live-build chroot directly), and reboots.
+//
+// ACCEPTED TRADEOFF (explicit user decision, not an oversight): there is
+// NO A/B partition and NO pre-apply snapshot/rollback here. If power is
+// lost mid-`cp -a` in apply-update.sh, the device can be left unable to
+// boot. A safer dual-slot or snapshot+rollback design was offered and
+// declined in favor of getting fully-automatic updates shipped now.
 #pragma once
 
 #include <QObject>
@@ -50,11 +70,26 @@ public:
     // (network error or checksum mismatch).
     Q_INVOKABLE void downloadUpdate();
 
-    // A human-readable string describing that applying an OS update is a
-    // manual step (this class deliberately does not flash/apply images -
-    // see class comment), for the UI to display once a download
-    // succeeds.
+    // A human-readable string describing what happens next once a
+    // download succeeds (now: automatic background install + reboot,
+    // not a manual step - see class comment). Kept for the UI to show.
     Q_INVOKABLE QString applyInstructions() const;
+
+    // Starts the fully-automatic background cycle: checks once shortly
+    // after startup, then again every intervalHours, and if a newer
+    // version is found, chains straight through download -> verify ->
+    // applyUpdate() with no user interaction at any step. Call once from
+    // main.cpp right after construction. Safe to call more than once
+    // (only the first call does anything).
+    Q_INVOKABLE void startAutoUpdateCycle(int intervalHours = 6);
+
+    // Stages an already-downloaded, checksum-verified update (from
+    // m_pendingVersion/m_pendingType, set by the last successful
+    // downloadUpdate()) for the root-owned updater path/service pair to
+    // pick up - see class comment for the full handoff. Safe to call
+    // manually too (e.g. a "Restart & install now" button), not just
+    // from the auto cycle.
+    Q_INVOKABLE void applyUpdate();
 
 signals:
     void busyChanged();
@@ -64,6 +99,9 @@ signals:
     void checkFinished(bool available, const QString &latestVersion, const QString &notes);
     void downloadProgress(qint64 bytesReceived, qint64 bytesTotal);
     void downloadFinished(bool success, const QString &filePath, const QString &message);
+    // Marker written, root-side apply is about to start - the device
+    // will reboot on its own within moments of this firing.
+    void updateStaged(const QString &version);
 
 private:
     static constexpr const char *kManifestUrl =
@@ -79,6 +117,7 @@ private:
     QNetworkAccessManager m_net;
     bool m_busy = false;
     QString m_statusMessage;
+    bool m_autoCycleStarted = false;
 
     // Cached from the last successful checkForUpdate(), so
     // downloadUpdate() doesn't need to re-fetch/re-parse the manifest.

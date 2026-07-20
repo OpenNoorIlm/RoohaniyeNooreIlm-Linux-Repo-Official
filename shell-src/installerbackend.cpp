@@ -675,8 +675,20 @@ void InstallerBackend::startInstall(const QVariantMap &options)
     emit installProgress(0, "partitioning", "Starting...");
 
     m_proc = new QProcess(this);
-    m_proc->setProgram("pkexec");
-    m_proc->setArguments({"sh", scriptPath});
+    // NOTE: was "pkexec" - changed because pkexec needs a graphical
+    // polkit authentication agent registered on the session bus, and
+    // this kiosk session has none (roohaniye-shell.service launches
+    // straight onto tty1, bypassing lightdm/xfce4-session entirely, so
+    // no autostart'd agent ever runs). With no agent to answer it,
+    // pkexec would hang or fail unpredictably with zero output - exactly
+    // the "freezes / doesn't even start / no logs" behavior reported.
+    // `sudo -n` uses the passwordless NOPASSWD rule already set up for
+    // this exact reason (see config-src/roohaniye-nopasswd, and
+    // DebugBackend::runCommand which already does this correctly) and
+    // fails immediately and loudly if that rule is ever missing, instead
+    // of hanging silently waiting for a password with no TTY to read one.
+    m_proc->setProgram("sudo");
+    m_proc->setArguments({"-n", "sh", scriptPath});
 
     // Rough percent-per-stage mapping for the progress screen; exact
     // per-file rsync progress is logged raw but not parsed into percent
@@ -739,9 +751,12 @@ void InstallerBackend::rebootSystem() const
 {
     // Try the no-prompt path first (works when the shell user is in the
     // right polkit/systemd group, common on kiosk-style installs); fall
-    // back to pkexec if that's rejected.
+    // back to sudo -n (not pkexec - no graphical polkit agent exists in
+    // this kiosk session, see continue.md "Installer freeze/hang bug" -
+    // pkexec here would hang/fail silently exactly like the install
+    // script did before that fix).
     int rc = QProcess::execute("systemctl", {"reboot"});
     if (rc != 0) {
-        QProcess::execute("pkexec", {"reboot"});
+        QProcess::execute("sudo", {"-n", "reboot"});
     }
 }

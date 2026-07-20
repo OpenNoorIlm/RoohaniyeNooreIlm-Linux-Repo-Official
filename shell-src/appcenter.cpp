@@ -117,8 +117,14 @@ bool AppCenter::verifySha256(const QString &filePath, const QString &expectedHex
 
 bool AppCenter::installDeb(const QString &filePath, QString *errorOut) const
 {
+    // NOTE: was "pkexec" - changed because pkexec needs a graphical
+    // polkit auth agent, which doesn't exist in this kiosk session (see
+    // continue.md, "Installer freeze/hang bug"). Same failure mode here:
+    // pkexec could hang for the full 120s timeout on every install
+    // instead of failing fast. `-n` (non-interactive) makes sudo fail
+    // immediately instead of hanging if NOPASSWD isn't set up.
     QProcess proc;
-    proc.start("pkexec", {"dpkg", "-i", filePath});
+    proc.start("sudo", {"-n", "dpkg", "-i", filePath});
     proc.waitForFinished(120000);
     if (proc.exitCode() != 0) {
         if (errorOut) *errorOut = QString::fromUtf8(proc.readAllStandardError());
@@ -129,8 +135,9 @@ bool AppCenter::installDeb(const QString &filePath, QString *errorOut) const
 
 bool AppCenter::removeDeb(const QString &packageId, QString *errorOut) const
 {
+    // NOTE: was "pkexec" - same reasoning as installDeb() above.
     QProcess proc;
-    proc.start("pkexec", {"dpkg", "-r", packageId});
+    proc.start("sudo", {"-n", "dpkg", "-r", packageId});
     proc.waitForFinished(60000);
     if (proc.exitCode() != 0) {
         if (errorOut) *errorOut = QString::fromUtf8(proc.readAllStandardError());

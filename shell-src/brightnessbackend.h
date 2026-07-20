@@ -6,10 +6,12 @@
 // with EACCES - setBrightness() tries a direct write first (works for
 // free on any machine where such a udev rule DOES exist, e.g. after
 // InstallerBackend's install script adds one - see its bootloader stage)
-// and falls back to `pkexec sh -c "echo N > path"` otherwise. That
-// means the very first brightness change on a stock system prompts once
-// via polkit; every key press after that reuses the cached auth per
-// polkit's normal short-lived session grant.
+// and falls back to `sudo -n sh -c "echo N > path"` otherwise (was
+// `pkexec` - switched because this kiosk session has no graphical
+// polkit auth agent, so pkexec just hangs/fails silently instead of
+// prompting; see continue.md "Installer freeze/hang bug"). The fallback
+// relies on the roohaniye user's passwordless NOPASSWD sudo, same as
+// the installer and app center.
 #pragma once
 
 #include <QObject>

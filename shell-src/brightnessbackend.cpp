@@ -69,9 +69,15 @@ bool BrightnessBackend::writeRaw(int rawValue)
         }
     }
 
-    // Fall back to a single privileged write via pkexec.
+    // Fall back to a single privileged write via sudo.
+    // NOTE: was "pkexec" - changed because pkexec needs a graphical
+    // polkit auth agent, which doesn't exist in this kiosk session (see
+    // continue.md, "Installer freeze/hang bug"). Same failure mode here:
+    // pkexec could block for the full 15s timeout on every debounced
+    // slider write instead of failing fast. `-n` (non-interactive) makes
+    // sudo fail immediately instead of hanging if NOPASSWD isn't set up.
     QProcess p;
-    p.start("pkexec", {"sh", "-c", QString("echo %1 > %2").arg(rawValue).arg(path)});
+    p.start("sudo", {"-n", "sh", "-c", QString("echo %1 > %2").arg(rawValue).arg(path)});
     if (!p.waitForFinished(15000)) return false;
     return p.exitCode() == 0;
 }

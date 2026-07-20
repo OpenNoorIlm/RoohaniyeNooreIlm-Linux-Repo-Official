@@ -2114,3 +2114,117 @@ than my test values.
   despite real feature work landing — that streak is broken now, but stay
   disciplined about it: update this file before ending the session, not
   after.
+
+## Installer freeze/hang bug — pkexec has no polkit agent in kiosk session (this session)
+
+**Root cause found**: `installerbackend.cpp` ran the install script via
+`pkexec sh <scriptPath>`. `pkexec` requires a graphical polkit
+authentication agent registered in the session to grant permission. The
+kiosk session (`roohaniye-shell.service` launching the Qt binary directly
+on tty1, bypassing lightdm/xfce4-session) never starts one — so `pkexec`
+has nothing to authenticate against. Depending on timing this either hangs
+indefinitely or fails silently with zero stdout/stderr, which is exactly
+the "sometimes doesn't even start / freezes / no logs" behavior reported.
+This matches the user's report on both counts: intermittent non-start, and
+freezes with no log output (the UI thread stays responsive — "can still
+move around the wizard" — because it's the child process that's stuck, not
+the app itself).
+
+Confirmed by checking the chroot/target build: it has `polkit`'s daemon
+but none of the interactive UI agents (`polkit-gnome`,
+`lxqt-policykit`, etc.), and the kiosk unit never starts a desktop session
+that would autostart one anyway.
+
+The user (in an earlier session) already solved this exact class of
+problem for the Debug Console: `roohaniye` has a fully-configured
+passwordless `sudo` (`NOPASSWD: ALL`, `config-src/roohaniye-nopasswd`),
+specifically because `sudo`/`pkexec` can't prompt with no TTY/no agent.
+`debugbackend.cpp` correctly uses `sudo`. `installerbackend.cpp` did not
+get the same treatment.
+
+**Fix applied** (installer only — the destructive erase/clone path, judged
+highest priority since it's the one that matters most if it hangs
+mid-erase): `installerbackend.cpp` now runs the install script via
+`sudo -n sh <scriptPath>` instead of `pkexec sh <scriptPath>`. `-n`
+(non-interactive) means it fails fast instead of hanging if NOPASSWD sudo
+isn't set up for some reason, rather than silently blocking forever like
+`pkexec` did.
+
+Verified: rebuilt clean (`cmake .. && make`, no errors/warnings on the
+changed file), headless-launched
+(`timeout N env QT_QPA_PLATFORM=xcb DISPLAY=:0 ./roohaniye-shell`) with no
+crash at startup.
+
+**Not fixed yet — same bug still present in two other files**:
+`brightnessbackend.cpp` and `appcenter.cpp` (app install/uninstall path)
+still call `pkexec` directly and are subject to the identical hang/silent-
+failure risk. Lower priority than the installer (not destructive, and
+brightness already has a `pkexec tee`-avoidance path noted elsewhere in
+this file), but should get the same `sudo -n` treatment — or a real udev
+rule for brightness specifically — at some point. Not scoped/started this
+session.
+
+**Also investigated, ruled out as primary cause**: the reported "1GB/hour"
+install slowness. The 21GB+ audio/mushaf databases are not baked into the
+ISO (bind-mounted separately), so it's not a redundant double-copy of
+those. Likely still a real factor (slow USB stick target, live filesystem
+being squashfs-backed with decompression overhead on every read during the
+`rsync -aAX` clone stage) but wasn't proven definitively, and it's also
+plausible that some of what looked like "slowness" was actually this same
+pkexec hang being misread as a stalled progress bar (progress screen holds
+a static percentage during the clone stage regardless). Worth re-testing
+the actual clone throughput now that the pkexec freeze is fixed, before
+chasing rsync/USB-speed further.
+
+**Still not tested against a real disk** (same caveat as the rest of the
+installer, see item 9 in "Known gaps" above) — this dev box has only its
+own root disk, correctly excluded from the enumerated targets, so there
+was nothing safe to run the actual erase/clone/GRUB script against here.
+
+## pkexec follow-up: fixed the two remaining call sites (this session)
+
+Finished what the previous entry left open. All `pkexec` calls in
+`roohaniye-shell` that could actually run during normal kiosk use are now
+`sudo -n` instead, for the same reason as the installer fix above (no
+graphical polkit auth agent exists in this kiosk session, so `pkexec`
+hangs or fails silently instead of prompting):
+
+- `brightnessbackend.cpp` — the privileged-write fallback used when no
+  udev rule grants direct `video`-group access to
+  `/sys/class/backlight/*/brightness`. Previously could block the caller
+  for the full 15s timeout on every debounced slider write instead of
+  failing fast; now fails immediately if NOPASSWD sudo isn't set up.
+- `appcenter.cpp` — both `installDeb()` (120s timeout) and `removeDeb()`
+  (60s timeout).
+- `installerbackend.cpp::rebootSystem()` — the `pkexec reboot` fallback
+  used when `systemctl reboot` isn't reachable without a prompt. Same bug,
+  smaller blast radius (only hit if `systemctl reboot` itself fails), but
+  fixed for consistency.
+
+Also updated the stale comments in `brightnessbackend.h` and
+`installerbackend.h` that still described the old pkexec-based design, so
+they don't mislead the next person reading them.
+
+**Verified**: clean rebuild (`cmake .. && make`, zero errors/warnings
+across all changed files), headless launch
+(`timeout 6 env QT_QPA_PLATFORM=xcb DISPLAY=:0 ./roohaniye-shell`) — no
+crash, no QML warnings, both databases opened fine. `git status`/`git
+diff --stat` confirms only the six intended files changed (the five
+`pkexec`→`sudo -n` files plus this continue.md entry) — nothing else
+touched.
+
+**Not tested interactively** (same limitation as always — Claude can't
+click/tap): the brightness slider's fallback path, and the app
+center's actual install/uninstall flow, still need a real hands-on pass
+by the user to confirm the `sudo -n` swap behaves identically to what
+`pkexec` used to do when it worked (i.e. no regression in the *success*
+path, only the *no-agent* failure mode was the target of this fix).
+
+**Everything relying on `sudo -n` here depends on
+`config-src/roohaniye-nopasswd` actually being installed/active on the
+target system** (`NOPASSWD: ALL` for the `roohaniye` user). If that sudoers
+drop-in is ever missing or misconfigured on a real device, all five of
+these privileged actions will now fail fast and visibly (non-zero exit,
+usually near-instant) instead of hanging - which is the intended trade-off,
+but worth knowing if someone reports "installer/brightness/app center just
+doesn't work at all" on a fresh image: check that sudoers file first.

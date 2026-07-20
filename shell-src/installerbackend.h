@@ -30,8 +30,11 @@
 //     gates its own "Install now" button on it - never trust the UI
 //     layer alone for something this destructive.
 //   - The actual partition/format/copy/grub work runs as a single
-//     generated shell script executed via `pkexec sh <script>`, not
-//     scattered pkexec calls - one polkit prompt, one place to read the
+//     generated shell script executed via `sudo -n sh <script>` (was
+//     `pkexec sh <script>` - switched because this kiosk session has no
+//     graphical polkit auth agent, so pkexec hung/failed silently
+//     instead of prompting; see continue.md "Installer freeze/hang
+//     bug"), not scattered privileged calls - one place to read the
 //     exact commands that will run, one log.
 //   - THIS PIPELINE HAS NOT BEEN EXECUTED AGAINST REAL HARDWARE in the
 //     session that wrote it (deliberately - it was developed and code-
@@ -163,7 +166,8 @@ public:
     Q_INVOKABLE void cancelInstall();
 
     // Reboots the machine right now via `systemctl reboot` (falls back
-    // to `pkexec reboot` if systemctl isn't reachable without a prompt).
+    // to `sudo -n reboot` if systemctl isn't reachable without a prompt -
+    // not `pkexec reboot`, same no-polkit-agent reasoning as above).
     // Only meant to be called from the post-install success screen,
     // after the user has confirmed they've removed the install USB -
     // this file never checks that itself, it just reboots on request.

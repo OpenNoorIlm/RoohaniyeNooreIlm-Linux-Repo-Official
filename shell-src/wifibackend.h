@@ -29,6 +29,15 @@ public:
     Q_INVOKABLE void setWifiEnabled(bool enabled);
     Q_INVOKABLE void refreshWifiState();
 
+    // Runs when a scan/connect attempt suggests something's actually wrong
+    // (not just "no networks in range") - distinguishes the handful of
+    // real causes behind nmcli's generic "unavailable" device state, which
+    // otherwise looks identical to the user whether it's a hardware kill
+    // switch, a leftover software block, or a genuinely missing driver.
+    // Synchronous (rfkill/nmcli both return in well under a second) - fine
+    // to call directly from QML when the WiFi screen wants an explanation.
+    Q_INVOKABLE QString diagnoseWifiIssue() const;
+
 signals:
     void networksChanged();
     void scanningChanged();

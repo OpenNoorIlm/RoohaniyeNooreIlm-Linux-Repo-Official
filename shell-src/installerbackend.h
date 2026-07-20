@@ -83,6 +83,16 @@ public:
     // guessing.
     Q_INVOKABLE QVariantList listDisks() const;
 
+    // Unallocated free-space regions on `diskPath`, via `parted print
+    // free` - NEVER resizes or touches existing partitions, just finds
+    // gaps. Each entry: { startMiB, endMiB, sizeMiB, sizeLabel }.
+    // Regions under ~2GiB are omitted (too small for a usable install).
+    // This is what powers "install alongside" / "manual partitioning"
+    // modes below - both only ever create NEW partitions inside a
+    // region the user explicitly picked from this list, so an existing
+    // Windows/Linux install on the same disk is never at risk.
+    Q_INVOKABLE QVariantList listFreeSpace(const QString &diskPath) const;
+
     // Lightweight browser for picking replacement/extra database files
     // off removable storage during setup - same shape as
     // DbConnectorBackend::listDirectory (name, path, isDir, isDb,
@@ -96,6 +106,35 @@ public:
     // the QML progress/animation screen keeps rendering). `options`:
     //   diskPath        - e.g. "/dev/sdb", must be one of listDisks()'s
     //                     entries (re-checked here, not just trusted).
+    //   installMode     - "erase" (default if omitted): wipes diskPath
+    //                     entirely and uses the whole disk, exactly the
+    //                     original single-boot behavior, unchanged.
+    //                   - "alongside" or "manual": NEVER wipes the disk
+    //                     or touches its existing partitions. Instead
+    //                     creates new partitions inside ONE free-space
+    //                     region from listFreeSpace(diskPath), which
+    //                     the caller must have picked and passed back
+    //                     as freeSpaceStartMiB/freeSpaceEndMiB (both
+    //                     re-validated server-side against a fresh
+    //                     listFreeSpace() call - never trust remembered
+    //                     QML state for something this destructive). A
+    //                     small ESP is always created first inside that
+    //                     region (existing ESPs elsewhere on the disk
+    //                     are left alone - grub-install to a second ESP
+    //                     is safe and normal on multi-boot machines).
+    //                     "alongside" then fills the rest of the region
+    //                     with a single ext4 root partition. "manual"
+    //                     additionally accepts `partitions`: [ {
+    //                     mountPoint: "/"|"/home"|"swap", sizeMiB (a
+    //                     positive number of MiB, or -1/omitted to mean
+    //                     "fill whatever's left in the region - only
+    //                     one entry may do this, and it must be last")
+    //                     } ]. Exactly one entry must be mountPoint "/".
+    //   freeSpaceStartMiB, freeSpaceEndMiB - required (and re-validated)
+    //                     for "alongside"/"manual", ignored for "erase".
+    //   partitions      - see installMode above; ignored for "erase"
+    //                     and for "alongside" (which has a fixed
+    //                     ESP+root layout).
     //   confirmText     - must be exactly "ERASE" or this call refuses
     //                     outright and emits installFinished(false, ...)
     //                     synchronously without touching anything.
@@ -148,6 +187,19 @@ signals:
 private:
     QString findRootDisk() const; // disk device backing "/", to exclude from listDisks()
     QString buildInstallScript(const QVariantMap &options, QString &error) const;
+    // Shared by the "alongside"/"manual" branch of buildInstallScript():
+    // generates the partition/format/mount commands that operate only
+    // inside [startMiB, endMiB) of diskPath, never touching anything
+    // else on the disk. Returns the commands as a string to be spliced
+    // into the script, and fills outRootPart/outEfiPart/outHomePart/
+    // outSwapPart with the resulting device paths (outHomePart/
+    // outSwapPart empty if not requested) so the rest of the script
+    // knows what to mount/rsync-into/add-to-fstab.
+    QString buildFreeSpacePartitionCommands(const QString &diskPath, qint64 startMiB, qint64 endMiB,
+                                             const QVariantList &partitions,
+                                             QString &outRootPart, QString &outEfiPart,
+                                             QString &outHomePart, QString &outSwapPart,
+                                             QString &error) const;
 
     bool m_installRunning = false;
     QProcess *m_proc = nullptr;

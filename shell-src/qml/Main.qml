@@ -249,6 +249,7 @@ Window {
                 if (currentView === "qibla") return "QiblaView.qml"
                 if (currentView === "installer") return "InstallerWizard.qml"
                 if (currentView === "reminders") return "RemindersView.qml"
+                if (currentView === "debug") return "DebugConsoleView.qml"
                 return "HomeScreen.qml"
             }
 

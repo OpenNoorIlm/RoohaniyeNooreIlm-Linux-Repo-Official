@@ -22,6 +22,7 @@
 #include "reminderbackend.h"
 #include "themebackend.h"
 #include "authbackend.h"
+#include "debugbackend.h"
 
 int main(int argc, char *argv[])
 {
@@ -91,6 +92,10 @@ int main(int argc, char *argv[])
     VolumeBackend volumeBackend;
     ReminderBackend reminderBackend;
     AuthBackend authBackend;
+    // Depends on StorageBackend* (reads its already-detected removable
+    // device list to know where to write log files) - declared after it
+    // for the same reverse-destruction-order reasoning as DbConnectorBackend.
+    DebugBackend debugBackend(&storageBackend);
 
     QQmlApplicationEngine engine;
 
@@ -125,6 +130,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("reminderBackend", &reminderBackend);
     engine.rootContext()->setContextProperty("themeBackend", &themeBackend);
     engine.rootContext()->setContextProperty("authBackend", &authBackend);
+    engine.rootContext()->setContextProperty("debugBackend", &debugBackend);
     // Fully-automatic background OS updates: checks periodically,
     // downloads+verifies, and stages for install with no user tap
     // needed - see updatebackend.h for the full check->download->apply

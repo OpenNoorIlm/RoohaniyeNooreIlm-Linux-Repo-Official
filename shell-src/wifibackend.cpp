@@ -59,7 +59,10 @@ void WifiBackend::scan()
         setScanning(false);
 
         if (exitCode != 0) {
-            setStatus("Couldn't scan for networks. Is WiFi hardware available?");
+            const QString reason = diagnoseWifiIssue();
+            setStatus(reason.isEmpty()
+                ? "Couldn't scan for networks. Is WiFi hardware available?"
+                : reason);
             return;
         }
 
@@ -123,4 +126,79 @@ void WifiBackend::connectToNetwork(const QString &ssid, const QString &password)
         args << "password" << password;
     }
     proc->start("nmcli", args);
+}
+
+QString WifiBackend::diagnoseWifiIssue() const
+{
+    // 1. Find the wifi device name and NetworkManager's own state/reason
+    // for it - this is the single most authoritative source (NM knows
+    // exactly why it thinks the device is unusable), so check it first.
+    QProcess devProc;
+    devProc.start("nmcli", {"-t", "-f", "DEVICE,TYPE,STATE", "device"});
+    devProc.waitForFinished(3000);
+    const QStringList devLines = QString::fromUtf8(devProc.readAllStandardOutput())
+        .split('\n', Qt::SkipEmptyParts);
+
+    QString wifiDevice;
+    QString wifiState;
+    for (const QString &line : devLines) {
+        const QStringList parts = line.split(':');
+        if (parts.size() >= 3 && parts.at(1) == "wifi") {
+            wifiDevice = parts.at(0);
+            wifiState = parts.at(2);
+            break;
+        }
+    }
+
+    if (wifiDevice.isEmpty()) {
+        // No wifi-type device at all - either no wifi card, or the kernel
+        // driver never bound to it (e.g. missing firmware). rfkill can
+        // still tell us if the radio itself is blocked even with no
+        // device node, so don't return yet - fall through to the rfkill
+        // check below and combine both findings.
+        wifiState = "(no wifi device found)";
+    }
+
+    // 2. rfkill: distinguishes a HARD block (physical switch/Fn-key/
+    // airplane-mode toggle - software cannot clear this, only the user
+    // flipping the switch can) from a SOFT block (leftover software
+    // block - rfkill-unblock.service should already clear this at boot,
+    // so seeing one here means that service didn't run or was undone
+    // afterward).
+    QProcess rfProc;
+    rfProc.start("rfkill", {"list", "wifi"});
+    rfProc.waitForFinished(3000);
+    const QString rfOut = QString::fromUtf8(rfProc.readAllStandardOutput());
+    const bool hardBlocked = rfOut.contains("Hard blocked: yes");
+    const bool softBlocked = rfOut.contains("Soft blocked: yes");
+
+    if (hardBlocked) {
+        return "WiFi is switched off at the hardware level - check for an "
+               "airplane-mode key or physical WiFi switch on this device "
+               "and turn it back on. This can't be fixed from software.";
+    }
+    if (softBlocked) {
+        return "WiFi was software-blocked (rfkill) - tap the WiFi toggle "
+               "again to clear it.";
+    }
+
+    if (wifiDevice.isEmpty()) {
+        return "No WiFi hardware was found by the system. If this device "
+               "has a WiFi card, its driver or firmware may not be loaded.";
+    }
+
+    if (wifiState.contains("unavailable", Qt::CaseInsensitive)) {
+        // rfkill says nothing is blocked and the driver did create a
+        // device node, so NetworkManager itself is refusing to manage
+        // it - ask it directly for the reason rather than guessing.
+        QProcess reasonProc;
+        reasonProc.start("nmcli", {"-t", "-f", "GENERAL.STATE,GENERAL.REASON", "device", "show", wifiDevice});
+        reasonProc.waitForFinished(3000);
+        const QString reasonOut = QString::fromUtf8(reasonProc.readAllStandardOutput()).trimmed();
+        return "WiFi hardware was detected but isn't usable right now "
+               "(NetworkManager reports: " + reasonOut + "). Try restarting "
+               "this device.";
+    }
+
+    return QString(); // device present, not blocked, not "unavailable" - whatever failed is something else (e.g. just no networks in range)
 }

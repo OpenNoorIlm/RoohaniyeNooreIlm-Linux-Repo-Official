@@ -24,6 +24,34 @@ Rectangle {
     property string pickingTargetFile: "" // which db slot the browser overlay is filling
     property bool browsing: false
 
+    // ---- Install mode: "erase" (wipe the whole disk, single-boot,
+    // original behavior) vs "alongside"/"manual" (create new partitions
+    // inside a chosen free-space region only - existing OSes/partitions
+    // on the disk are never touched or resized). ----
+    property string installMode: "erase"
+    property var freeSpaceRegions: []   // installerBackend.listFreeSpace(disk) results
+    property var selectedFreeSpace: null
+    property bool wantHome: false
+    property real homeSizeGiB: 20
+    property bool wantSwap: false
+    property real swapSizeGiB: 4
+
+    function refreshFreeSpace() {
+        wiz.freeSpaceRegions = wiz.selectedDisk ? installerBackend.listFreeSpace(wiz.selectedDisk.path) : []
+        wiz.selectedFreeSpace = null
+    }
+    // Builds the `partitions` array for buildInstallScript's "manual"
+    // mode from the simple home/swap toggles above - root always fills
+    // whatever's left, and (per backend contract) the fill entry must
+    // be last, so home/swap (if enabled) come first with explicit sizes.
+    function buildManualPartitions() {
+        var parts = []
+        if (wiz.wantSwap) parts.push({ mountPoint: "swap", sizeMiB: Math.round(wiz.swapSizeGiB * 1024) })
+        if (wiz.wantHome) parts.push({ mountPoint: "/home", sizeMiB: Math.round(wiz.homeSizeGiB * 1024) })
+        parts.push({ mountPoint: "/", sizeMiB: -1 })
+        return parts
+    }
+
     // ---- Optional "create an account" step. Off by default (a Try/
     // install session should never be forced into setting up a login) -
     // toggling it on and filling in valid details stages a real
@@ -323,7 +351,117 @@ Rectangle {
                                 }
                             }
 
-                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: wiz.selectedDisk = modelData }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { wiz.selectedDisk = modelData; wiz.installMode = "erase"; wiz.refreshFreeSpace() } }
+                        }
+                    }
+
+                    // ---- Install mode picker (only once a disk is chosen) ----
+                    ColumnLayout {
+                        visible: !!wiz.selectedDisk
+                        Layout.fillWidth: true
+                        Layout.topMargin: 8
+                        spacing: 10
+
+                        Text { text: "How should this disk be used?"; color: "#e8f5ee"; font.pixelSize: 15; font.weight: Font.Medium }
+
+                        Repeater {
+                            model: [
+                                { key: "erase", title: "Erase entire disk", desc: "Simplest option. Wipes everything on this disk and uses it only for RoohaniyeNooreIlm." },
+                                { key: "alongside", title: "Install alongside existing OS", desc: "Uses only free/unallocated space on this disk. Existing partitions (Windows, another Linux, etc.) are left untouched. One root partition, sized to fill the space." },
+                                { key: "manual", title: "Manual partitioning", desc: "Same as above, but you choose separate /home and swap sizes too - like a real OS installer." }
+                            ]
+                            delegate: Rectangle {
+                                readonly property bool isSel: wiz.installMode === modelData.key
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: modeCol.height + 24
+                                radius: 12
+                                color: isSel ? "#0f6e56" : "#173832"
+                                border.width: isSel ? 2 : 0
+                                border.color: "#7fd6b4"
+                                ColumnLayout {
+                                    id: modeCol
+                                    x: 14; y: 10
+                                    width: parent.width - 28
+                                    spacing: 3
+                                    Text { text: modelData.title; color: "#e8f5ee"; font.pixelSize: 14; font.weight: Font.Medium }
+                                    Text { text: modelData.desc; color: "#8fb3a4"; font.pixelSize: 12; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                }
+                                MouseArea { anchors.fill: parent; onClicked: { wiz.installMode = modelData.key; if (modelData.key !== "erase") wiz.refreshFreeSpace() } }
+                            }
+                        }
+
+                        // ---- Free-space region picker (alongside/manual) ----
+                        ColumnLayout {
+                            visible: wiz.installMode !== "erase"
+                            Layout.fillWidth: true
+                            Layout.topMargin: 6
+                            spacing: 8
+
+                            Text {
+                                visible: wiz.freeSpaceRegions.length === 0
+                                text: "No usable unallocated free space (2GB+) found on this disk - try \"Erase entire disk\" instead, or free up space first (e.g. shrink an existing partition in Windows' Disk Management)."
+                                color: "#f2c9a3"; font.pixelSize: 12; wrapMode: Text.WordWrap; Layout.fillWidth: true
+                            }
+
+                            Text { visible: wiz.freeSpaceRegions.length > 0; text: "Pick which free-space region to use:"; color: "#8fb3a4"; font.pixelSize: 12 }
+
+                            Repeater {
+                                model: wiz.freeSpaceRegions
+                                delegate: Rectangle {
+                                    readonly property bool isSel: wiz.selectedFreeSpace && wiz.selectedFreeSpace.startMiB === modelData.startMiB
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 44
+                                    radius: 10
+                                    color: isSel ? "#0f6e56" : "#173832"
+                                    border.width: isSel ? 2 : 0
+                                    border.color: "#7fd6b4"
+                                    Text {
+                                        anchors.left: parent.left; anchors.leftMargin: 14; anchors.verticalCenter: parent.verticalCenter
+                                        text: modelData.sizeLabel + " free"
+                                        color: "#e8f5ee"; font.pixelSize: 13
+                                    }
+                                    MouseArea { anchors.fill: parent; onClicked: wiz.selectedFreeSpace = modelData }
+                                }
+                            }
+
+                            // ---- Manual partition sizing ----
+                            ColumnLayout {
+                                visible: wiz.installMode === "manual"
+                                Layout.fillWidth: true
+                                Layout.topMargin: 6
+                                spacing: 8
+
+                                Text { text: "Root (/) will fill whatever's left after the options below."; color: "#8fb3a4"; font.pixelSize: 12; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    CheckBox { id: homeCheck; checked: wiz.wantHome; onCheckedChanged: wiz.wantHome = checked }
+                                    Text { text: "Separate /home partition"; color: "#e8f5ee"; font.pixelSize: 13 }
+                                    Item { Layout.fillWidth: true }
+                                    TextField {
+                                        visible: wiz.wantHome
+                                        Layout.preferredWidth: 70
+                                        text: wiz.homeSizeGiB.toString()
+                                        validator: DoubleValidator { bottom: 1; top: 4000 }
+                                        onTextChanged: if (text.length) wiz.homeSizeGiB = parseFloat(text)
+                                    }
+                                    Text { visible: wiz.wantHome; text: "GB"; color: "#8fb3a4"; font.pixelSize: 12 }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    CheckBox { id: swapCheck; checked: wiz.wantSwap; onCheckedChanged: wiz.wantSwap = checked }
+                                    Text { text: "Swap partition"; color: "#e8f5ee"; font.pixelSize: 13 }
+                                    Item { Layout.fillWidth: true }
+                                    TextField {
+                                        visible: wiz.wantSwap
+                                        Layout.preferredWidth: 70
+                                        text: wiz.swapSizeGiB.toString()
+                                        validator: DoubleValidator { bottom: 0.5; top: 256 }
+                                        onTextChanged: if (text.length) wiz.swapSizeGiB = parseFloat(text)
+                                    }
+                                    Text { visible: wiz.wantSwap; text: "GB"; color: "#8fb3a4"; font.pixelSize: 12 }
+                                }
+                            }
                         }
                     }
                 }
@@ -333,10 +471,11 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 50
                 radius: 12
-                color: wiz.selectedDisk ? "#0f6e56" : "#20463d"
-                opacity: wiz.selectedDisk ? 1.0 : 0.6
+                readonly property bool ready: wiz.selectedDisk && (wiz.installMode === "erase" || wiz.selectedFreeSpace)
+                color: ready ? "#0f6e56" : "#20463d"
+                opacity: ready ? 1.0 : 0.6
                 Text { anchors.centerIn: parent; text: "Continue"; color: "#fff"; font.pixelSize: 15; font.weight: Font.Medium }
-                MouseArea { anchors.fill: parent; enabled: !!wiz.selectedDisk; onClicked: wiz.step = 2 }
+                MouseArea { anchors.fill: parent; enabled: parent.ready; onClicked: wiz.step = 2 }
             }
         }
 
@@ -584,6 +723,24 @@ Rectangle {
                     }
                     RowLayout {
                         Layout.fillWidth: true
+                        Text { text: "Install mode"; color: "#8fb3a4"; font.pixelSize: 12; Layout.preferredWidth: 140 }
+                        Text {
+                            text: {
+                                if (wiz.installMode === "erase") return "Erase entire disk"
+                                var t = "Install alongside existing OS \u2014 " + (wiz.selectedFreeSpace ? wiz.selectedFreeSpace.sizeLabel : "?") + " free space used"
+                                if (wiz.installMode === "manual") {
+                                    var extras = []
+                                    if (wiz.wantHome) extras.push("/home " + wiz.homeSizeGiB + "GB")
+                                    if (wiz.wantSwap) extras.push("swap " + wiz.swapSizeGiB + "GB")
+                                    t = "Manual partitioning \u2014 " + (wiz.selectedFreeSpace ? wiz.selectedFreeSpace.sizeLabel : "?") + " free space, root fills rest" + (extras.length ? " + " + extras.join(", ") : "")
+                                }
+                                return t
+                            }
+                            color: "#e8f5ee"; font.pixelSize: 13; Layout.fillWidth: true; wrapMode: Text.WordWrap
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
                         Text { text: "Extra databases"; color: "#8fb3a4"; font.pixelSize: 12; Layout.preferredWidth: 140 }
                         Text {
                             text: wiz.extraDbs.length === 0 ? "None \u2014 using image defaults" : wiz.extraDbs.length + " custom file(s) selected"
@@ -620,7 +777,12 @@ Rectangle {
                     x: 14; y: 12
                     width: parent.width - 28
                     spacing: 4
-                    Text { text: "\u26A0 Everything currently on " + (wiz.selectedDisk ? wiz.selectedDisk.path : "the selected disk") + " will be permanently erased."; color: "#f2a3a3"; font.pixelSize: 13; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                    Text {
+                        text: wiz.installMode === "erase"
+                            ? ("\u26A0 Everything currently on " + (wiz.selectedDisk ? wiz.selectedDisk.path : "the selected disk") + " will be permanently erased.")
+                            : ("\u26A0 A new " + (wiz.selectedFreeSpace ? wiz.selectedFreeSpace.sizeLabel : "") + " region of free space on " + (wiz.selectedDisk ? wiz.selectedDisk.path : "the selected disk") + " will be partitioned and formatted. Existing partitions/OSes on this disk are not touched.")
+                        color: "#f2a3a3"; font.pixelSize: 13; wrapMode: Text.WordWrap; Layout.fillWidth: true
+                    }
                     Repeater {
                         model: wiz.selectedDisk ? wiz.selectedDisk.warnings : []
                         delegate: Text {
@@ -668,7 +830,7 @@ Rectangle {
                 color: ready ? "#8a2f2f" : "#2c1e1e"
                 opacity: ready ? 1.0 : 0.6
                 Behavior on color { ColorAnimation { duration: 150 } }
-                Text { anchors.centerIn: parent; text: "Erase disk & install"; color: "#fff"; font.pixelSize: 15; font.weight: Font.Medium }
+                Text { anchors.centerIn: parent; text: wiz.installMode === "erase" ? "Erase disk & install" : "Partition & install"; color: "#fff"; font.pixelSize: 15; font.weight: Font.Medium }
                 MouseArea {
                     anchors.fill: parent
                     enabled: parent.ready
@@ -680,7 +842,15 @@ Rectangle {
                         var opts = {
                             diskPath: wiz.selectedDisk.path,
                             confirmText: wiz.confirmInput,
-                            extraDatabases: wiz.extraDbs
+                            extraDatabases: wiz.extraDbs,
+                            installMode: wiz.installMode
+                        }
+                        if (wiz.installMode !== "erase" && wiz.selectedFreeSpace) {
+                            opts.freeSpaceStartMiB = wiz.selectedFreeSpace.startMiB
+                            opts.freeSpaceEndMiB = wiz.selectedFreeSpace.endMiB
+                            if (wiz.installMode === "manual") {
+                                opts.partitions = wiz.buildManualPartitions()
+                            }
                         }
                         if (wiz.accountEnabled) {
                             opts.account = {

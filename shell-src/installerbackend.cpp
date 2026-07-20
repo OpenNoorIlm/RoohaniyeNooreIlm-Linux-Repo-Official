@@ -38,7 +38,11 @@ QString InstallerBackend::findRootDisk() const
     p.start("findmnt", {"-no", "SOURCE", "/"});
     if (!p.waitForFinished(3000)) return QString();
     const QString src = QString::fromUtf8(p.readAllStandardOutput()).trimmed();
-    if (src.isEmpty() || !src.startsWith("/dev/")) return QString();
+    qDebug() << "InstallerBackend::findRootDisk: findmnt SOURCE / ->" << src;
+    if (src.isEmpty() || !src.startsWith("/dev/")) {
+        qDebug() << "InstallerBackend::findRootDisk: not a /dev/ path (likely overlay on a live boot) - excluding nothing";
+        return QString();
+    }
 
     QString name = src.mid(5); // strip "/dev/"
     // nvme0n1p3 / mmcblk0p1 style: strip trailing "pN"
@@ -55,7 +59,9 @@ QString InstallerBackend::findRootDisk() const
         while (i > 0 && name.at(i - 1).isDigit()) --i;
         name = name.left(i);
     }
-    return "/dev/" + name;
+    const QString result = "/dev/" + name;
+    qDebug() << "InstallerBackend::findRootDisk: resolved root disk ->" << result;
+    return result;
 }
 
 namespace {
@@ -105,13 +111,17 @@ QVariantList InstallerBackend::listDisks() const
     }
 
     const QJsonArray devices = doc.object().value("blockdevices").toArray();
+    qDebug() << "InstallerBackend::listDisks: lsblk reports" << devices.size() << "block devices total, rootDisk to exclude =" << rootDisk;
     for (const QJsonValue &dv : devices) {
         const QJsonObject obj = dv.toObject();
         if (obj.value("type").toString() != "disk") continue; // skip loop/rom/etc
 
         const QString name = obj.value("name").toString();
         const QString path = "/dev/" + name;
-        if (!rootDisk.isEmpty() && path == rootDisk) continue; // never offer the running disk
+        if (!rootDisk.isEmpty() && path == rootDisk) {
+            qDebug() << "InstallerBackend::listDisks: excluding" << path << "(matches root disk)";
+            continue; // never offer the running disk
+        }
 
         const qint64 bytes = jsonSizeBytes(obj.value("size"));
         if (bytes <= 0) continue;
@@ -167,6 +177,65 @@ QVariantList InstallerBackend::listDisks() const
         dev["warnings"] = warnings;
         result.append(dev);
     }
+    qDebug() << "InstallerBackend::listDisks: returning" << result.size() << "eligible disk(s)";
+    return result;
+}
+
+QVariantList InstallerBackend::listFreeSpace(const QString &diskPath) const
+{
+    QVariantList result;
+    QProcess p;
+    p.start("parted", {"-m", "-s", diskPath, "unit", "MiB", "print", "free"});
+    if (!p.waitForFinished(6000)) {
+        qWarning() << "InstallerBackend::listFreeSpace: parted timed out for" << diskPath;
+        return result;
+    }
+    if (p.exitCode() != 0) {
+        qWarning() << "InstallerBackend::listFreeSpace: parted exited" << p.exitCode() << "for" << diskPath;
+        return result;
+    }
+
+    // parted -m output looks like:
+    //   BYT;
+    //   /dev/sda:512110MiB:nvme:512:512:gpt:...;
+    //   1:1.00MiB:513MiB:512MiB:fat32:ESP:boot, esp;
+    //   1:513MiB:8513MiB:8000MiB:free;      <- free regions have no fs
+    //   2:8513MiB:512110MiB:503597MiB:ext4::;
+    // Free regions are identified by field[4] == "free" (they have no
+    // partition number in some parted versions, a placeholder in
+    // others - don't rely on field[0], just check the fstype field).
+    const QStringList lines = QString::fromUtf8(p.readAllStandardOutput()).split('\n', Qt::SkipEmptyParts);
+    const qint64 kMinFreeMiB = 2048; // ignore slivers under ~2GiB - not enough for a usable install
+    for (const QString &rawLine : lines) {
+        QString line = rawLine.trimmed();
+        if (line.endsWith(';')) line.chop(1);
+        const QStringList f = line.split(':');
+        if (f.size() < 5) continue;
+        if (!f.at(4).trimmed().contains("free", Qt::CaseInsensitive)) continue;
+
+        auto miB = [](QString s) -> double {
+            s.remove("MiB");
+            bool ok = false;
+            const double v = s.toDouble(&ok);
+            return ok ? v : -1.0;
+        };
+        const double startMiB = miB(f.at(1));
+        const double endMiB = miB(f.at(2));
+        if (startMiB < 0 || endMiB < 0 || endMiB <= startMiB) continue;
+
+        const qint64 sizeMiB = static_cast<qint64>(endMiB - startMiB);
+        if (sizeMiB < kMinFreeMiB) continue;
+
+        QVariantMap region;
+        region["startMiB"] = static_cast<qint64>(startMiB);
+        region["endMiB"] = static_cast<qint64>(endMiB);
+        region["sizeMiB"] = sizeMiB;
+        region["sizeLabel"] = sizeMiB >= 1024
+            ? QString::number(sizeMiB / 1024.0, 'f', 1) + " GB"
+            : QString::number(sizeMiB) + " MB";
+        result.append(region);
+    }
+    qDebug() << "InstallerBackend::listFreeSpace:" << diskPath << "->" << result.size() << "usable free region(s)";
     return result;
 }
 
@@ -207,6 +276,100 @@ QVariantList InstallerBackend::listDirectory(const QString &path) const
     return result;
 }
 
+QString InstallerBackend::buildFreeSpacePartitionCommands(const QString &diskPath, qint64 startMiB, qint64 endMiB,
+                                                           const QVariantList &partitions,
+                                                           QString &outRootPart, QString &outEfiPart,
+                                                           QString &outHomePart, QString &outSwapPart,
+                                                           QString &error) const
+{
+    // Figure out the next free partition NUMBER on this disk (existing
+    // partitions are left completely alone - we only ever append new
+    // ones after them).
+    QProcess lp;
+    lp.start("lsblk", {"-n", "-o", "NAME", diskPath});
+    lp.waitForFinished(5000);
+    const int existingCount = qMax(0, QString::fromUtf8(lp.readAllStandardOutput())
+                                           .split('\n', Qt::SkipEmptyParts).size() - 1);
+    const bool needsP = diskPath.contains("nvme") || diskPath.contains("mmcblk");
+    auto partPath = [&](int num) { return diskPath + (needsP ? "p" : "") + QString::number(num); };
+
+    // Validate the requested partition list.
+    QVariantList parts = partitions;
+    if (parts.isEmpty()) {
+        QVariantMap rootOnly; rootOnly["mountPoint"] = "/"; rootOnly["sizeMiB"] = -1;
+        parts.append(rootOnly);
+    }
+    bool hasRoot = false;
+    int fillCount = 0;
+    for (int i = 0; i < parts.size(); ++i) {
+        const QVariantMap m = parts.at(i).toMap();
+        const QString mp = m.value("mountPoint").toString();
+        if (mp != "/" && mp != "/home" && mp != "swap") {
+            error = "Invalid partition mount point: " + mp;
+            return QString();
+        }
+        if (mp == "/") hasRoot = true;
+        const qint64 sz = m.value("sizeMiB", -1).toLongLong();
+        if (sz <= 0) {
+            fillCount++;
+            if (i != parts.size() - 1) {
+                error = "Only the last partition in the list may use remaining space.";
+                return QString();
+            }
+        }
+    }
+    if (!hasRoot) { error = "A root (/) partition is required."; return QString(); }
+    if (fillCount > 1) { error = "Only one partition may use remaining space."; return QString(); }
+
+    const qint64 kEspSizeMiB = 512;
+    const qint64 regionSizeMiB = endMiB - startMiB;
+    qint64 explicitTotal = kEspSizeMiB;
+    for (const QVariant &v : parts) {
+        const qint64 sz = v.toMap().value("sizeMiB", -1).toLongLong();
+        if (sz > 0) explicitTotal += sz;
+    }
+    if (explicitTotal > regionSizeMiB) {
+        error = "Selected partitions don't fit in the chosen free-space region.";
+        return QString();
+    }
+
+    QString cmds;
+    QTextStream out(&cmds);
+
+    qint64 cursor = startMiB;
+    int partNum = existingCount + 1;
+
+    // ESP first, always.
+    out << "parted -s " << diskPath << " mkpart ESP fat32 " << cursor << "MiB " << (cursor + kEspSizeMiB) << "MiB\n";
+    out << "parted -s " << diskPath << " set " << partNum << " esp on\n";
+    outEfiPart = partPath(partNum);
+    cursor += kEspSizeMiB;
+    partNum++;
+
+    for (int i = 0; i < parts.size(); ++i) {
+        const QVariantMap m = parts.at(i).toMap();
+        const QString mp = m.value("mountPoint").toString();
+        qint64 sz = m.value("sizeMiB", -1).toLongLong();
+        const bool isFill = (sz <= 0);
+        const qint64 partEnd = isFill ? endMiB : (cursor + sz);
+
+        const QString label = (mp == "/") ? "root" : (mp == "/home" ? "home" : "swap");
+        const QString fsHint = (mp == "swap") ? "linux-swap" : "ext4";
+        out << "parted -s " << diskPath << " mkpart " << label << " " << fsHint << " "
+            << cursor << "MiB " << partEnd << "MiB\n";
+
+        const QString devPath = partPath(partNum);
+        if (mp == "/") outRootPart = devPath;
+        else if (mp == "/home") outHomePart = devPath;
+        else outSwapPart = devPath;
+
+        cursor = partEnd;
+        partNum++;
+    }
+
+    return cmds;
+}
+
 QString InstallerBackend::buildInstallScript(const QVariantMap &options, QString &error) const
 {
     const QString diskPath = options.value("diskPath").toString();
@@ -227,33 +390,103 @@ QString InstallerBackend::buildInstallScript(const QVariantMap &options, QString
     // need a "p" before the partition number, sd/vd don't).
     const QString diskName = QFileInfo(diskPath).fileName();
     const bool needsP = diskName.contains("nvme") || diskName.contains("mmcblk");
-    const QString part1 = diskPath + (needsP ? "p1" : "1"); // EFI
-    const QString part2 = diskPath + (needsP ? "p2" : "2"); // root
+
+    const QString installMode = options.value("installMode", "erase").toString();
+
+    QString part1;      // EFI
+    QString part2;      // root
+    QString homePart;   // optional
+    QString swapPart;   // optional
+    QString stage1;      // partitioning + formatting + mounting, mode-specific
+
+    QTextStream stage1Out(&stage1);
+
+    if (installMode == "erase") {
+        part1 = diskPath + (needsP ? "p1" : "1");
+        part2 = diskPath + (needsP ? "p2" : "2");
+
+        stage1Out << "echo STAGE:partitioning\n";
+        // Wipe partition table, create GPT with a 512MB EFI partition and
+        // the rest as the root partition.
+        stage1Out << "wipefs -a " << diskPath << "\n";
+        stage1Out << "parted -s " << diskPath << " mklabel gpt\n";
+        stage1Out << "parted -s " << diskPath << " mkpart ESP fat32 1MiB 513MiB\n";
+        stage1Out << "parted -s " << diskPath << " set 1 esp on\n";
+        stage1Out << "parted -s " << diskPath << " mkpart root ext4 513MiB 100%\n";
+        stage1Out << "partprobe " << diskPath << "\n";
+        stage1Out << "sleep 2\n";
+
+        stage1Out << "echo STAGE:formatting\n";
+        stage1Out << "mkfs.fat -F32 " << part1 << "\n";
+        stage1Out << "mkfs.ext4 -F " << part2 << "\n";
+    } else if (installMode == "alongside" || installMode == "manual") {
+        // NEVER wipes the disk or touches its existing partitions - only
+        // ever creates new ones inside a free-space region the caller
+        // picked, re-validated here against a fresh listFreeSpace() call.
+        const qint64 startMiB = options.value("freeSpaceStartMiB", -1).toLongLong();
+        const qint64 endMiB = options.value("freeSpaceEndMiB", -1).toLongLong();
+        bool regionValid = false;
+        for (const QVariant &v : listFreeSpace(diskPath)) {
+            const QVariantMap r = v.toMap();
+            if (r.value("startMiB").toLongLong() <= startMiB && r.value("endMiB").toLongLong() >= endMiB
+                && startMiB < endMiB) {
+                regionValid = true;
+                break;
+            }
+        }
+        if (!regionValid) {
+            error = "Selected free-space region is no longer valid - refresh and try again.";
+            return QString();
+        }
+
+        QVariantList partitions = options.value("partitions").toList();
+        if (installMode == "alongside") {
+            // Fixed layout: ESP + a single ext4 root filling the rest.
+            QVariantMap rootOnly; rootOnly["mountPoint"] = "/"; rootOnly["sizeMiB"] = -1;
+            partitions = QVariantList{ rootOnly };
+        }
+
+        QString partErr;
+        const QString partCmds = buildFreeSpacePartitionCommands(
+            diskPath, startMiB, endMiB, partitions, part2, part1, homePart, swapPart, partErr);
+        if (!partErr.isEmpty()) {
+            error = partErr;
+            return QString();
+        }
+
+        stage1Out << "echo STAGE:partitioning\n";
+        stage1Out << partCmds;
+        stage1Out << "partprobe " << diskPath << "\n";
+        stage1Out << "sleep 2\n";
+
+        stage1Out << "echo STAGE:formatting\n";
+        stage1Out << "mkfs.fat -F32 " << part1 << "\n";
+        stage1Out << "mkfs.ext4 -F " << part2 << "\n";
+        if (!homePart.isEmpty()) stage1Out << "mkfs.ext4 -F " << homePart << "\n";
+        if (!swapPart.isEmpty()) stage1Out << "mkswap " << swapPart << "\n";
+    } else {
+        error = "Unknown installMode: " + installMode;
+        return QString();
+    }
 
     QString script;
     QTextStream out(&script);
     out << "#!/bin/sh\n";
     out << "set -e\n";
-    out << "echo STAGE:partitioning\n";
-    // Wipe partition table, create GPT with a 512MB EFI partition and
-    // the rest as the root partition.
-    out << "wipefs -a " << diskPath << "\n";
-    out << "parted -s " << diskPath << " mklabel gpt\n";
-    out << "parted -s " << diskPath << " mkpart ESP fat32 1MiB 513MiB\n";
-    out << "parted -s " << diskPath << " set 1 esp on\n";
-    out << "parted -s " << diskPath << " mkpart root ext4 513MiB 100%\n";
-    out << "partprobe " << diskPath << "\n";
-    out << "sleep 2\n";
-
-    out << "echo STAGE:formatting\n";
-    out << "mkfs.fat -F32 " << part1 << "\n";
-    out << "mkfs.ext4 -F " << part2 << "\n";
+    out << stage1;
 
     out << "echo STAGE:cloning\n";
     out << "mkdir -p /mnt/roohaniye-target\n";
     out << "mount " << part2 << " /mnt/roohaniye-target\n";
     out << "mkdir -p /mnt/roohaniye-target/boot/efi\n";
     out << "mount " << part1 << " /mnt/roohaniye-target/boot/efi\n";
+    if (!homePart.isEmpty()) {
+        out << "mkdir -p /mnt/roohaniye-target/home\n";
+        out << "mount " << homePart << " /mnt/roohaniye-target/home\n";
+    }
+    if (!swapPart.isEmpty()) {
+        out << "swapon " << swapPart << " || true\n";
+    }
     // Clone the currently-running live filesystem onto the target,
     // excluding pseudo-filesystems, the target mount itself, and the
     // live boot media.
@@ -299,6 +532,27 @@ QString InstallerBackend::buildInstallScript(const QVariantMap &options, QString
     out << "date -Iseconds > /mnt/roohaniye-target" << kMarkerPath << "\n";
 
     out << "echo STAGE:bootloader\n";
+    if (installMode != "erase") {
+        // Erase mode relies on whatever /etc/fstab was cloned from the
+        // live session (a pre-existing limitation, out of scope here -
+        // see build.md). But alongside/manual introduce NEW partitions
+        // (home/swap/a second ESP) that the cloned fstab knows nothing
+        // about, so without this they'd silently stop being mounted on
+        // the very next boot. Write fresh UUID-based entries for
+        // everything we just created.
+        out << "EFI_UUID=$(blkid -s UUID -o value " << part1 << ")\n";
+        out << "ROOT_UUID=$(blkid -s UUID -o value " << part2 << ")\n";
+        out << "echo \"UUID=$ROOT_UUID / ext4 defaults 0 1\" >> /mnt/roohaniye-target/etc/fstab\n";
+        out << "echo \"UUID=$EFI_UUID /boot/efi vfat umask=0077 0 1\" >> /mnt/roohaniye-target/etc/fstab\n";
+        if (!homePart.isEmpty()) {
+            out << "HOME_UUID=$(blkid -s UUID -o value " << homePart << ")\n";
+            out << "echo \"UUID=$HOME_UUID /home ext4 defaults 0 2\" >> /mnt/roohaniye-target/etc/fstab\n";
+        }
+        if (!swapPart.isEmpty()) {
+            out << "SWAP_UUID=$(blkid -s UUID -o value " << swapPart << ")\n";
+            out << "echo \"UUID=$SWAP_UUID none swap sw 0 0\" >> /mnt/roohaniye-target/etc/fstab\n";
+        }
+    }
     out << "for d in /dev /dev/pts /proc /sys /run; do "
            "mount --bind $d /mnt/roohaniye-target$d; done\n";
     out << "chroot /mnt/roohaniye-target grub-install --target=x86_64-efi "
@@ -327,6 +581,8 @@ QString InstallerBackend::buildInstallScript(const QVariantMap &options, QString
     out << "echo STAGE:finishing\n";
     out << "for d in /dev/pts /dev /proc /sys /run; do "
            "umount -lf /mnt/roohaniye-target$d 2>/dev/null || true; done\n";
+    if (!swapPart.isEmpty()) out << "swapoff " << swapPart << " || true\n";
+    if (!homePart.isEmpty()) out << "umount " << homePart << "\n";
     out << "umount " << part1 << "\n";
     out << "umount " << part2 << "\n";
     out << "echo STAGE:done\n";

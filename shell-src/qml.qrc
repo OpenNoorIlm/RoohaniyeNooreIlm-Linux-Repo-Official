@@ -23,6 +23,7 @@
         <file>qml/LocationPicker.qml</file>
         <file>qml/InstallerWizard.qml</file>
         <file>qml/RemindersView.qml</file>
+        <file>qml/DebugConsoleView.qml</file>
         <file>qml/LockScreen.qml</file>
         <file>qml/VirtualKeyboard.qml</file>
         <file>assets/audio/SciFi-MouseClick.wav</file>

@@ -31,7 +31,11 @@
         <file>assets/audio/SelectBtnClick.wav</file>
         <file>assets/audio/SleecingSound.wav</file>
         <file>assets/audio/ilm_noor_hai_ringtone.mp3</file>
+        <file>assets/audio/pageFlip.mp3</file>
+        <file>assets/audio/ButtonClick.mp3</file>
+        <file>assets/audio/bismillah.mp3</file>
         <file>assets/images/brand_icon.png</file>
+        <file>assets/images/debug_icon.png</file>
         <file>assets/images/splash_background.png</file>
         <file>assets/images/home_background.png</file>
         <file>assets/images/quran_icon.png</file>

@@ -126,6 +126,14 @@ Rectangle {
         // ---- Header ----
         RowLayout {
             Layout.fillWidth: true
+            spacing: 12
+            Image {
+                source: "qrc:/assets/images/debug_icon.png"
+                Layout.preferredWidth: 40
+                Layout.preferredHeight: 40
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
             ColumnLayout {
                 spacing: 2
                 Text { text: "Debug Console"; color: root.theme.text; font.pixelSize: 24; font.weight: Font.Medium }

@@ -41,7 +41,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.goBack() } }
             }
             Text { text: "Hadith"; color: "#e8f5ee"; font.pixelSize: 22; font.weight: Font.Medium; Layout.leftMargin: 12 }
         }
@@ -75,7 +75,7 @@ Rectangle {
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: menu.openReader({ book: lastProgress.book, id: lastProgress.id })
+                onClicked: { root.sounds.buttonClick(); menu.openReader({ book: lastProgress.book, id: lastProgress.id }) }
             }
         }
 
@@ -110,7 +110,7 @@ Rectangle {
                     MouseArea {
                         id: bookMouse
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             menu.topicPickerBook = modelData.book
                             menu.showTopicPicker = true
                         }
@@ -154,7 +154,7 @@ Rectangle {
                     MouseArea {
                         id: actionMouse
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             if (modelData.action === "search") {
                                 menu.showSearch = true
                             } else if (modelData.action === "random") {
@@ -208,7 +208,7 @@ Rectangle {
                     text: "\u2190"
                     color: "#7fd6b4"
                     font.pixelSize: 20
-                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { menu.showSearch = false; searchField.text = "" } }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); menu.showSearch = false; searchField.text = "" } }
                 }
                 Text { text: "Search hadiths"; color: "#e8f5ee"; font.pixelSize: 18; font.weight: Font.Medium; Layout.leftMargin: 12 }
             }
@@ -279,7 +279,7 @@ Rectangle {
                     MouseArea {
                         id: resultMouse
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             menu.showSearch = false
                             menu.openReader({ book: modelData.book, id: modelData.id })
                         }

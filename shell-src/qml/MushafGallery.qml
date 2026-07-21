@@ -37,7 +37,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.goBack() } }
             }
             Text { text: "Quran Mushaf"; color: "#e8f5ee"; font.pixelSize: 22; font.weight: Font.Medium; Layout.leftMargin: 12 }
         }
@@ -80,7 +80,7 @@ Rectangle {
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: gallery.openMushaf(lastProgress.mushafName, lastProgress.pageNumber)
+                onClicked: { root.sounds.buttonClick(); gallery.openMushaf(lastProgress.mushafName, lastProgress.pageNumber) }
             }
         }
 
@@ -134,7 +134,7 @@ Rectangle {
                 MouseArea {
                     id: tileMouse
                     anchors.fill: parent
-                    onClicked: gallery.openMushaf(modelData.mushafName, modelData.minPage)
+                    onClicked: { root.sounds.buttonClick(); gallery.openMushaf(modelData.mushafName, modelData.minPage) }
                 }
             }
         }

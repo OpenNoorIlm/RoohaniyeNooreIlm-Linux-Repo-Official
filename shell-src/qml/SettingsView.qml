@@ -100,7 +100,7 @@ Rectangle {
                             MouseArea {
                                 anchors.fill: parent
                                 enabled: storageBackend.storagePresent
-                                onClicked: bgPicker.visible = true
+                                onClicked: { root.sounds.buttonClick(); bgPicker.visible = true }
                             }
                         }
                         Rectangle {
@@ -278,7 +278,7 @@ Rectangle {
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
+                    onClicked: { root.sounds.buttonClick();
                         if (modelData.secured) {
                             selectedSsid = modelData.ssid
                             passwordDialog.open()
@@ -418,7 +418,7 @@ Rectangle {
                                         color: authBackend.autoLockMinutes === modelData.value ? "#10241f" : root.theme.subtext
                                         font.pixelSize: 12
                                     }
-                                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: authBackend.setAutoLockMinutes(modelData.value) }
+                                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); authBackend.setAutoLockMinutes(modelData.value) } }
                                 }
                             }
                         }
@@ -579,7 +579,7 @@ Rectangle {
             Button { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
             Button {
                 text: accountDialog.isFirstAccount ? "Create" : "Add"
-                onClicked: {
+                onClicked: { root.sounds.buttonClick();
                     if (newUserPass1.text !== newUserPass2.text) {
                         accountDialog.errorText = "Passwords don't match."
                         return
@@ -630,7 +630,7 @@ Rectangle {
             Button { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
             Button {
                 text: "Save"
-                onClicked: {
+                onClicked: { root.sounds.buttonClick();
                     var res = authBackend.changePassword(authBackend.loggedInUser, oldPassField.text, newPassField.text)
                     if (res.ok) {
                         changePassDialog.close()
@@ -679,7 +679,7 @@ Rectangle {
             Button { text: "Cancel"; DialogButtonBox.buttonRole: DialogButtonBox.RejectRole }
             Button {
                 text: "Remove"
-                onClicked: {
+                onClicked: { root.sounds.buttonClick();
                     var res = authBackend.deleteAccount(deleteUserDialog.targetUser, delPassField.text)
                     if (res.ok) {
                         deleteUserDialog.close()
@@ -729,7 +729,7 @@ Rectangle {
                     text: "\u2715"
                     color: root.theme.accent
                     font.pixelSize: 18
-                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: bgPicker.visible = false }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); bgPicker.visible = false } }
                 }
                 Text { text: "Choose a background image"; color: "#e8f5ee"; font.pixelSize: 17; font.weight: Font.Medium; Layout.leftMargin: 12 }
             }
@@ -769,7 +769,7 @@ Rectangle {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             if (modelData.isDir) {
                                 bgPicker.pathStack.push(bgPicker.currentPath)
                                 bgPicker.currentPath = modelData.path
@@ -804,7 +804,7 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "\u2190 Back"; color: "#dff2ea"; font.pixelSize: 12 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: bgPicker.currentPath = bgPicker.pathStack.pop()
+                    onClicked: { root.sounds.buttonClick(); bgPicker.currentPath = bgPicker.pathStack.pop() }
                 }
             }
         }

@@ -56,7 +56,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.goBack() } }
             }
             Text {
                 text: "Prayer times"
@@ -71,7 +71,7 @@ Rectangle {
                 text: "\u2699"
                 color: "#7fd6b4"
                 font.pixelSize: 18
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: prayerRoot.showSettings = !prayerRoot.showSettings }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); prayerRoot.showSettings = !prayerRoot.showSettings } }
             }
         }
 
@@ -98,7 +98,7 @@ Rectangle {
                 radius: 12
                 color: "#0f6e56"
                 Text { anchors.centerIn: parent; text: "Choose location"; color: "#fff"; font.pixelSize: 14; font.weight: Font.Medium }
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: locationLoader.active = true }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); locationLoader.active = true } }
             }
             Item { Layout.fillHeight: true; Layout.preferredHeight: 2 }
         }
@@ -123,7 +123,7 @@ Rectangle {
                     text: "Change"
                     color: "#7fd6b4"
                     font.pixelSize: 12
-                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: locationLoader.active = true }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); locationLoader.active = true } }
                 }
             }
 
@@ -224,7 +224,7 @@ Rectangle {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             prayerBackend.setCalculationSettings(modelData.fajr, modelData.isha, prayerRoot.calc.asrFactor)
                             prayerRoot.refresh()
                         }
@@ -246,7 +246,7 @@ Rectangle {
                     Text { anchors.centerIn: parent; text: "Standard\n(Shafi/Maliki/Hanbali)"; horizontalAlignment: Text.AlignHCenter; color: "#fff"; font.pixelSize: 12 }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             prayerBackend.setCalculationSettings(prayerRoot.calc.fajrAngle, prayerRoot.calc.ishaAngle, 1)
                             prayerRoot.refresh()
                         }
@@ -260,7 +260,7 @@ Rectangle {
                     Text { anchors.centerIn: parent; text: "Hanafi"; color: "#fff"; font.pixelSize: 13 }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             prayerBackend.setCalculationSettings(prayerRoot.calc.fajrAngle, prayerRoot.calc.ishaAngle, 2)
                             prayerRoot.refresh()
                         }
@@ -276,7 +276,7 @@ Rectangle {
                 radius: 12
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "Done"; color: "#dff2ea"; font.pixelSize: 14 }
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { prayerRoot.showSettings = false; prayerRoot.refresh() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); prayerRoot.showSettings = false; prayerRoot.refresh() } }
             }
         }
     }

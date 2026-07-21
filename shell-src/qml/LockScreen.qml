@@ -274,7 +274,7 @@ Rectangle {
                         }
                     }
                 }
-                MouseArea { anchors.fill: parent; onClicked: submitBtn.clicked() }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); submitBtn.clicked() } }
             }
 
             Text {
@@ -286,7 +286,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     anchors.margins: -8
-                    onClicked: {
+                    onClicked: { root.sounds.buttonClick();
                         if (lockRoot.loginMode && userField.text.trim() === "") {
                             lockRoot.errorText = "Enter your username first."
                             return
@@ -307,7 +307,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     anchors.margins: -8
-                    onClicked: {
+                    onClicked: { root.sounds.buttonClick();
                         lockRoot.recoveryMode = false
                         lockRoot.recoveryStage = "code"
                         lockRoot.errorText = ""
@@ -324,7 +324,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     anchors.margins: -8
-                    onClicked: authBackend.logout()
+                    onClicked: { root.sounds.buttonClick(); authBackend.logout() }
                 }
             }
         }

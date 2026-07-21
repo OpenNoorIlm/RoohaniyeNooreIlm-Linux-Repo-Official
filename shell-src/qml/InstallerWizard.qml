@@ -122,14 +122,14 @@ Rectangle {
             color: "#7fd6b4"
             font.pixelSize: 20
             visible: step === 0
-            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.currentView = "home" }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.currentView = "home" } }
         }
         Text {
             text: "\u2190 Back"
             color: "#7fd6b4"
             font.pixelSize: 16
             visible: step > 0 && step < 5
-            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: wiz.step -= 1 }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); wiz.step -= 1 } }
         }
         Text {
             text: "Install RoohaniyeNooreIlm"
@@ -237,7 +237,7 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "Get started"; color: "#fff"; font.pixelSize: 15; font.weight: Font.Medium }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: { wiz.refreshDisks(); wiz.step = 1 }
+                    onClicked: { root.sounds.buttonClick(); wiz.refreshDisks(); wiz.step = 1 }
                 }
             }
             Text {
@@ -246,7 +246,7 @@ Rectangle {
                 font.pixelSize: 13
                 Layout.alignment: Qt.AlignHCenter
                 Layout.bottomMargin: 8
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.currentView = "home" }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.currentView = "home" } }
             }
         }
 
@@ -273,7 +273,7 @@ Rectangle {
                     text: "\u27F3 Refresh"
                     color: "#7fd6b4"
                     font.pixelSize: 12
-                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: wiz.refreshDisks() }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); wiz.refreshDisks() } }
                 }
             }
 
@@ -351,7 +351,7 @@ Rectangle {
                                 }
                             }
 
-                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { wiz.selectedDisk = modelData; wiz.installMode = "erase"; wiz.refreshFreeSpace() } }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); wiz.selectedDisk = modelData; wiz.installMode = "erase"; wiz.refreshFreeSpace() } }
                         }
                     }
 
@@ -386,7 +386,7 @@ Rectangle {
                                     Text { text: modelData.title; color: "#e8f5ee"; font.pixelSize: 14; font.weight: Font.Medium }
                                     Text { text: modelData.desc; color: "#8fb3a4"; font.pixelSize: 12; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                 }
-                                MouseArea { anchors.fill: parent; onClicked: { wiz.installMode = modelData.key; if (modelData.key !== "erase") wiz.refreshFreeSpace() } }
+                                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); wiz.installMode = modelData.key; if (modelData.key !== "erase") wiz.refreshFreeSpace() } }
                             }
                         }
 
@@ -420,7 +420,7 @@ Rectangle {
                                         text: modelData.sizeLabel + " free"
                                         color: "#e8f5ee"; font.pixelSize: 13
                                     }
-                                    MouseArea { anchors.fill: parent; onClicked: wiz.selectedFreeSpace = modelData }
+                                    MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); wiz.selectedFreeSpace = modelData } }
                                 }
                             }
 
@@ -475,7 +475,7 @@ Rectangle {
                 color: ready ? "#0f6e56" : "#20463d"
                 opacity: ready ? 1.0 : 0.6
                 Text { anchors.centerIn: parent; text: "Continue"; color: "#fff"; font.pixelSize: 15; font.weight: Font.Medium }
-                MouseArea { anchors.fill: parent; enabled: parent.ready; onClicked: wiz.step = 2 }
+                MouseArea { anchors.fill: parent; enabled: parent.ready; onClicked: { root.sounds.buttonClick(); wiz.step = 2 } }
             }
         }
 
@@ -533,7 +533,7 @@ Rectangle {
                             color: "#7fd6b4"; font.pixelSize: 13
                             MouseArea {
                                 anchors.fill: parent
-                                onClicked: {
+                                onClicked: { root.sounds.buttonClick();
                                     wiz.pickingTargetFile = modelData.key
                                     wiz.refreshDir("/media")
                                     wiz.browsing = true
@@ -546,7 +546,7 @@ Rectangle {
                             color: "#c98a8a"; font.pixelSize: 13
                             MouseArea {
                                 anchors.fill: parent
-                                onClicked: {
+                                onClicked: { root.sounds.buttonClick();
                                     var l = wiz.extraDbs.filter(function(d) { return d.targetFile !== modelData.key })
                                     wiz.extraDbs = l
                                 }
@@ -564,7 +564,7 @@ Rectangle {
                 radius: 12
                 color: "#0f6e56"
                 Text { anchors.centerIn: parent; text: "Continue"; color: "#fff"; font.pixelSize: 15; font.weight: Font.Medium }
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: wiz.step = 3 }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); wiz.step = 3 } }
             }
         }
 
@@ -679,7 +679,7 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "Continue"; color: "#fff"; font.pixelSize: 15; font.weight: Font.Medium }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
+                    onClicked: { root.sounds.buttonClick();
                         if (wiz.accountEnabled) {
                             if (wiz.acctUsername.trim() === "") { wiz.acctError = "Enter a username."; return }
                             if (wiz.acctPassword.length < 4) { wiz.acctError = "Password must be at least 4 characters."; return }
@@ -834,7 +834,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     enabled: parent.ready
-                    onClicked: {
+                    onClicked: { root.sounds.buttonClick();
                         wiz.progressPercent = 0
                         wiz.progressStage = "partitioning"
                         wiz.logLines = []
@@ -1088,13 +1088,13 @@ Rectangle {
                         border.width: 2
                         border.color: "#7fd6b4"
                         Text { anchors.centerIn: parent; text: "\u2713"; color: "#fff"; font.pixelSize: 15; visible: resultStep.usbRemoved }
-                        MouseArea { anchors.fill: parent; anchors.margins: -9; onClicked: resultStep.usbRemoved = !resultStep.usbRemoved }
+                        MouseArea { anchors.fill: parent; anchors.margins: -9; onClicked: { root.sounds.buttonClick(); resultStep.usbRemoved = !resultStep.usbRemoved } }
                     }
                     Text {
                         text: "I've removed the USB drive"
                         color: "#e8f5ee"; font.pixelSize: 14
                         Layout.fillWidth: true
-                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: resultStep.usbRemoved = !resultStep.usbRemoved }
+                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); resultStep.usbRemoved = !resultStep.usbRemoved } }
                     }
                 }
             }
@@ -1120,7 +1120,7 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         enabled: parent.ready
-                        onClicked: installerBackend.rebootSystem()
+                        onClicked: { root.sounds.buttonClick(); installerBackend.rebootSystem() }
                     }
                 }
 
@@ -1137,7 +1137,7 @@ Rectangle {
                     }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             if (wiz.installOk) {
                                 root.currentView = "home"
                             } else {
@@ -1157,7 +1157,7 @@ Rectangle {
         opacity: wiz.browsing ? 0.55 : 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: 180 } }
-        MouseArea { anchors.fill: parent; onClicked: wiz.browsing = false }
+        MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); wiz.browsing = false } }
     }
 
     Rectangle {
@@ -1186,7 +1186,7 @@ Rectangle {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
-                Text { text: "\u2715"; color: "#8fb3a4"; font.pixelSize: 16; MouseArea { anchors.fill: parent; onClicked: wiz.browsing = false } }
+                Text { text: "\u2715"; color: "#8fb3a4"; font.pixelSize: 16; MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); wiz.browsing = false } } }
             }
 
             Text {
@@ -1202,7 +1202,7 @@ Rectangle {
                 color: "#7fd6b4"; font.pixelSize: 13
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
+                    onClicked: { root.sounds.buttonClick();
                         var parts = wiz.currentDir.split("/")
                         parts.pop()
                         var up = parts.join("/")
@@ -1260,7 +1260,7 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 enabled: parent.selectable
-                                onClicked: {
+                                onClicked: { root.sounds.buttonClick();
                                     if (modelData.isDir) {
                                         wiz.refreshDir(modelData.path)
                                     } else if (modelData.isDb) {

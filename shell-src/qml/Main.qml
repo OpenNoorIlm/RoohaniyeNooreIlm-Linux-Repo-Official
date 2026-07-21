@@ -479,6 +479,22 @@ Window {
     Component.onCompleted: {
         // DB already opened in main.cpp before QML loaded.
         sounds.bismillah()
+        // Cold-start warm-up: ringtoneFx is the one sound still on the
+        // GStreamer-backed Audio{} element (too long to convert to a
+        // memory-decoded SoundEffect WAV - see its comment below). Its
+        // very first play() pays for GStreamer pipeline construction,
+        // which is exactly the "kicks in late" symptom for whichever
+        // reminder happens to fire first. Priming it once, silently, at
+        // launch (muted + immediately stopped) moves that one-time cost
+        // to app startup instead of the first real reminder.
+        ringtoneFxWarmup.start()
+    }
+    Timer {
+        id: ringtoneFxWarmup
+        interval: 400
+        onTriggered: {
+            sounds.primeRingtone()
+        }
     }
 
     // ---- UI sound effects, shared across every loaded screen. Loader
@@ -506,21 +522,49 @@ Window {
         // present) - so this is the correct element for anything that
         // isn't a short raw WAV.
         Audio { id: ringtoneFx; source: "qrc:/assets/audio/ilm_noor_hai_ringtone.mp3"; volume: 0.7 }
+        Timer {
+            id: ringtoneFxPrimeStop
+            property real realVolume: 0.7
+            interval: 250
+            onTriggered: {
+                ringtoneFx.stop()
+                ringtoneFx.volume = realVolume
+            }
+        }
         // Buttons *inside* an app/settings screen (Debug Console rows,
         // Reminders actions, Settings account/power actions, etc.) use
         // this distinct click instead of clickFx above, which stays
-        // reserved for opening an app from HomeScreen/Menu. Same MP3
-        // decode note as ringtoneFx above applies here - Audio{}, not
-        // SoundEffect{}.
-        Audio { id: buttonClickFx; source: "qrc:/assets/audio/ButtonClick.mp3"; volume: 0.55 }
+        // reserved for opening an app from HomeScreen/Menu. Converted to
+        // WAV + SoundEffect{} - the original ButtonClick.mp3 via Audio{}
+        // (GStreamer) had a noticeable cold-start/seek delay on every
+        // play(), especially back-to-back taps, since it isn't decoded
+        // ahead of time like SoundEffect{} is.
+        SoundEffect { id: buttonClickFx; source: "qrc:/assets/audio/ButtonClick.wav"; volume: 0.55 }
         // Played once at startup (see Component.onCompleted below).
-        Audio { id: bismillahFx; source: "qrc:/assets/audio/bismillah.mp3"; volume: 0.7 }
+        // Same MP3->WAV conversion/reasoning as buttonClickFx above.
+        SoundEffect { id: bismillahFx; source: "qrc:/assets/audio/bismillah.wav"; volume: 0.7 }
+        // Page-turn navigation (Quran page-mode Prev/Next, Mushaf reader
+        // Prev/Next + left/right edge tap zones). Same MP3->WAV
+        // conversion/reasoning as buttonClickFx above.
+        SoundEffect { id: pageFlipFx; source: "qrc:/assets/audio/pageFlip.wav"; volume: 0.55 }
         function click() { clickFx.play() }
         function select() { selectFx.play() }
         function itemSelecting() { itemSelectingFx.play() }
         function ringtone() { ringtoneFx.stop(); ringtoneFx.play() }
+        // Warm-up only: builds/caches the GStreamer pipeline for this MP3
+        // once at launch (muted, stopped again immediately) so the
+        // pipeline-construction cost doesn't land on the first real
+        // reminder firing. Restores the real volume right after.
+        function primeRingtone() {
+            var realVolume = ringtoneFx.volume
+            ringtoneFx.volume = 0
+            ringtoneFx.play()
+            ringtoneFxPrimeStop.realVolume = realVolume
+            ringtoneFxPrimeStop.start()
+        }
         function buttonClick() { buttonClickFx.stop(); buttonClickFx.play() }
         function bismillah() { bismillahFx.stop(); bismillahFx.play() }
+        function pageFlip() { pageFlipFx.stop(); pageFlipFx.play() }
     }
     property alias sounds: sounds
 

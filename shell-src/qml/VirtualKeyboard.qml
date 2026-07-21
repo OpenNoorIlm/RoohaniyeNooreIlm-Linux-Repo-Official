@@ -81,7 +81,7 @@ Rectangle {
                 width: 30; height: 30; radius: 8
                 color: "transparent"
                 Text { anchors.centerIn: parent; text: "\u25BC"; color: theme.subtext; font.pixelSize: 13 }
-                MouseArea { anchors.fill: parent; anchors.margins: -7; onClicked: kb.hideRequested() }
+                MouseArea { anchors.fill: parent; anchors.margins: -7; onClicked: { root.sounds.buttonClick(); kb.hideRequested() } }
             }
         }
 
@@ -107,7 +107,7 @@ Rectangle {
                         MouseArea {
                             id: keyArea
                             anchors.fill: parent
-                            onClicked: kb.insertText(kb.keyLabel(modelData))
+                            onClicked: { root.sounds.buttonClick(); kb.insertText(kb.keyLabel(modelData)) }
                         }
                     }
                 }
@@ -127,7 +127,7 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "\u21E7"; color: (kb.shiftOn || kb.capsLock) ? "#ffffff" : theme.text; font.pixelSize: 18 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: kb.shiftOn = !kb.shiftOn
+                    onClicked: { root.sounds.buttonClick(); kb.shiftOn = !kb.shiftOn }
                     onDoubleClicked: { kb.capsLock = !kb.capsLock; kb.shiftOn = false }
                 }
             }
@@ -135,13 +135,13 @@ Rectangle {
                 width: 60; height: 44; radius: 8
                 color: theme.dark ? "#0f2b25" : "#f1f6f3"
                 Text { anchors.centerIn: parent; text: kb.symbolsOn ? "ABC" : "123"; color: theme.text; font.pixelSize: 13 }
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: kb.symbolsOn = !kb.symbolsOn }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); kb.symbolsOn = !kb.symbolsOn } }
             }
             Rectangle {
                 Layout.fillWidth: true
                 height: 44; radius: 8
                 color: theme.dark ? "#0f2b25" : "#f1f6f3"
-                MouseArea { anchors.fill: parent; onClicked: kb.insertText(" ") }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); kb.insertText(" ") } }
             }
             Rectangle {
                 width: 66; height: 44; radius: 8
@@ -160,7 +160,7 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "Done"; color: "#ffffff"; font.pixelSize: 13; font.weight: Font.Medium }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
+                    onClicked: { root.sounds.buttonClick();
                         if (kb.targetOk() && typeof target.accepted === "function") { /* no-op, just informational */ }
                         kb.doneRequested()
                     }

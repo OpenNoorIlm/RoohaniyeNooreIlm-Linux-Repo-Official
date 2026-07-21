@@ -88,7 +88,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.goBack() } }
             }
             Text { text: "Reminders"; color: "#e8f5ee"; font.pixelSize: 20; font.weight: Font.Medium; Layout.leftMargin: 12; Layout.fillWidth: true }
             Rectangle {
@@ -230,7 +230,7 @@ Rectangle {
                         width: 44; height: 44; radius: 10
                         color: view.editDays.indexOf(index) !== -1 ? "#0f6e56" : "#173832"
                         Text { anchors.centerIn: parent; text: modelData; color: "#dff2ea"; font.pixelSize: 11 }
-                        MouseArea { anchors.fill: parent; onClicked: view.toggleEditDay(index) }
+                        MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); view.toggleEditDay(index) } }
                     }
                 }
             }

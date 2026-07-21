@@ -196,7 +196,7 @@ Rectangle {
                     { icon: "qrc:/assets/images/reminders_icon.png", label: "Reminders", view: "reminders", requiresStorage: false },
                     { icon: "qrc:/assets/images/updates_icon.png", label: "Updates", view: "updates", requiresStorage: false },
                     { icon: "qrc:/assets/images/dbconnector_icon.png", label: "DB Connector", view: "dbconnector", requiresStorage: true },
-                    { icon: "qrc:/assets/images/settings_icon.png", label: "Debug Console", view: "debug", requiresStorage: false }
+                    { icon: "qrc:/assets/images/debug_icon.png", label: "Debug Console", view: "debug", requiresStorage: false }
                 ]
 
                 delegate: Rectangle {

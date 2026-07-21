@@ -56,7 +56,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: picker.closed() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); picker.closed() } }
             }
             Text {
                 text: picker.bookDisplayName
@@ -100,7 +100,7 @@ Rectangle {
                 Text { text: "Read this book, start to finish"; color: "#fff"; font.pixelSize: 14; font.weight: Font.Medium; Layout.leftMargin: 8; Layout.fillWidth: true }
                 Text { text: "\u2192"; color: "#fff"; font.pixelSize: 16 }
             }
-            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: picker.readWholeBook(picker.book) }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); picker.readWholeBook(picker.book) } }
         }
 
         ListView {
@@ -162,7 +162,7 @@ Rectangle {
                 font.pixelSize: 14
                 font.weight: Font.Medium
             }
-            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: picker.confirmSelection() }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); picker.confirmSelection() } }
         }
     }
 }

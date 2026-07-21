@@ -65,7 +65,7 @@ Rectangle {
                 font.pixelSize: 20
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
+                    onClicked: { root.sounds.buttonClick();
                         if (connectorRoot.stage === "browse") connectorRoot.goBack()
                         else if (connectorRoot.stage === "matches") connectorRoot.stage = "browse"
                         else root.goBack()
@@ -131,7 +131,7 @@ Rectangle {
                         Layout.preferredWidth: 76
                         Layout.preferredHeight: 32
                         Text { anchors.centerIn: parent; text: "Import"; color: "#ffffff"; font.pixelSize: 12; font.weight: Font.Medium }
-                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: connectorRoot.doImport(modelData) }
+                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); connectorRoot.doImport(modelData) } }
                     }
                 }
 
@@ -139,7 +139,7 @@ Rectangle {
                     id: rowMouse
                     anchors.fill: parent
                     z: -1 // let the Import button above take priority on click
-                    onClicked: if (modelData.isDir) connectorRoot.goInto(modelData)
+                    onClicked: { root.sounds.buttonClick(); if (modelData.isDir) connectorRoot.goInto(modelData) }
                 }
             }
 
@@ -202,7 +202,7 @@ Rectangle {
                     MouseArea {
                         id: appMouse
                         anchors.fill: parent
-                        onClicked: connectorRoot.doConnect(modelData.id)
+                        onClicked: { root.sounds.buttonClick(); connectorRoot.doConnect(modelData.id) }
                     }
                 }
             }
@@ -253,7 +253,7 @@ Rectangle {
                 radius: 12
                 color: "#0f6e56"
                 Text { anchors.centerIn: parent; text: "Done"; color: "#ffffff"; font.pixelSize: 14; font.weight: Font.Medium }
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.currentView = "home" }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.currentView = "home" } }
             }
 
             Item { Layout.fillHeight: true }

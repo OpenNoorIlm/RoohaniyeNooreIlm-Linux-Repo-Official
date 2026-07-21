@@ -85,7 +85,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { view.saveCurrentProgress(); root.goBack() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); view.saveCurrentProgress(); root.goBack() } }
             }
             ColumnLayout {
                 Layout.fillWidth: true
@@ -108,13 +108,13 @@ Rectangle {
                 width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2212"; color: "#7fd6b4"; font.pixelSize: 18 }
-                MouseArea { anchors.fill: parent; onClicked: zoomArea.zoomStep(-1) }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); zoomArea.zoomStep(-1) } }
             }
             Rectangle {
                 width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "+"; color: "#7fd6b4"; font.pixelSize: 18 }
-                MouseArea { anchors.fill: parent; onClicked: zoomArea.zoomStep(1) }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); zoomArea.zoomStep(1) } }
             }
         }
 
@@ -298,7 +298,7 @@ Rectangle {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: 48
-                onClicked: view.goToPage(view.currentPage - 1)
+                onClicked: { root.sounds.pageFlip(); view.goToPage(view.currentPage - 1) }
             }
             MouseArea {
                 visible: zoomArea.zoom <= 1.01
@@ -306,7 +306,7 @@ Rectangle {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: 48
-                onClicked: view.goToPage(view.currentPage + 1)
+                onClicked: { root.sounds.pageFlip(); view.goToPage(view.currentPage + 1) }
             }
         }
 
@@ -327,7 +327,7 @@ Rectangle {
                 radius: 10
                 color: view.currentPage > view.minPage ? "#0f6e56" : "#173832"
                 Text { anchors.centerIn: parent; text: "\u2190 Previous"; color: "#fff"; font.pixelSize: 13 }
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.goToPage(view.currentPage - 1) }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.pageFlip(); view.goToPage(view.currentPage - 1) } }
             }
 
             Rectangle {
@@ -356,7 +356,7 @@ Rectangle {
                     background: Item {}
                     onAccepted: {
                         var p = parseInt(text)
-                        if (!isNaN(p)) view.goToPage(p)
+                        if (!isNaN(p)) { root.sounds.pageFlip(); view.goToPage(p) }
                         focus = false
                     }
                 }
@@ -368,12 +368,12 @@ Rectangle {
                 radius: 10
                 color: view.currentPage < view.maxPage ? "#0f6e56" : "#173832"
                 Text { anchors.centerIn: parent; text: "Next \u2192"; color: "#fff"; font.pixelSize: 13 }
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.goToPage(view.currentPage + 1) }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.pageFlip(); view.goToPage(view.currentPage + 1) } }
             }
         }
     }
 
-    Keys.onLeftPressed: goToPage(currentPage - 1)
-    Keys.onRightPressed: goToPage(currentPage + 1)
+    Keys.onLeftPressed: { root.sounds.pageFlip(); goToPage(currentPage - 1) }
+    Keys.onRightPressed: { root.sounds.pageFlip(); goToPage(currentPage + 1) }
     focus: true
 }

@@ -52,7 +52,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.goBack() } }
             }
             Text {
                 text: "Updates"
@@ -104,7 +104,7 @@ Rectangle {
             MouseArea {
                 anchors.fill: parent
                 enabled: !updateBackend.busy
-                onClicked: updateBackend.checkForUpdate()
+                onClicked: { root.sounds.buttonClick(); updateBackend.checkForUpdate() }
             }
         }
 
@@ -158,7 +158,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     enabled: !updateBackend.busy
-                    onClicked: updateBackend.downloadUpdate()
+                    onClicked: { root.sounds.buttonClick(); updateBackend.downloadUpdate() }
                 }
             }
 

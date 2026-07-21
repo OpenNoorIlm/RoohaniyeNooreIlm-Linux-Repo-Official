@@ -57,7 +57,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.goBack() } }
             }
             Text { text: "Quran"; color: "#e8f5ee"; font.pixelSize: 22; font.weight: Font.Medium; Layout.leftMargin: 12 }
         }
@@ -88,7 +88,7 @@ Rectangle {
 
             MouseArea {
                 anchors.fill: parent
-                onClicked: menu.openReader({ surah: lastProgress.surah, ayah: lastProgress.ayah, layoutMode: "reading" })
+                onClicked: { root.sounds.buttonClick(); menu.openReader({ surah: lastProgress.surah, ayah: lastProgress.ayah, layoutMode: "reading" }) }
             }
         }
 
@@ -132,7 +132,7 @@ Rectangle {
                     MouseArea {
                         id: tileMouse
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             switch (modelData.action) {
                             case "hafizi":
                                 menu.openReader({ page: 1, layoutMode: "mushaf" })
@@ -215,7 +215,7 @@ Rectangle {
         color: "#00000099"
         z: 60
 
-        MouseArea { anchors.fill: parent; onClicked: menu.showGoToPage = false }
+        MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); menu.showGoToPage = false } }
 
         Rectangle {
             width: Math.min(320, parent.width - 40)
@@ -267,7 +267,7 @@ Rectangle {
                     Text { anchors.centerIn: parent; text: "Go"; color: "#fff"; font.pixelSize: 14 }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             var p = parseInt(pageField.text)
                             if (!isNaN(p) && p >= 1 && p <= quranBackend.totalPages()) {
                                 menu.showGoToPage = false

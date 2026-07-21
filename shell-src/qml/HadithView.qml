@@ -154,7 +154,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { saveCurrentProgress(); root.goBack() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); saveCurrentProgress(); root.goBack() } }
             }
 
             ColumnLayout {
@@ -182,7 +182,7 @@ Rectangle {
                 width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2637"; color: "#7fd6b4"; font.pixelSize: 15 }
-                MouseArea { anchors.fill: parent; onClicked: showTopicPicker = true }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); showTopicPicker = true } }
             }
 
             Rectangle {
@@ -191,7 +191,7 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "\u2611"; color: selectionMode ? "#fff" : "#7fd6b4"; font.pixelSize: 14 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: { selectionMode = !selectionMode; selectedIds = [] }
+                    onClicked: { root.sounds.buttonClick(); selectionMode = !selectionMode; selectedIds = [] }
                 }
             }
 
@@ -199,7 +199,7 @@ Rectangle {
                 width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2699"; color: "#7fd6b4"; font.pixelSize: 15 }
-                MouseArea { anchors.fill: parent; onClicked: showSettings = true }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); showSettings = true } }
             }
         }
 
@@ -250,7 +250,7 @@ Rectangle {
                         anchors.fill: parent
                         z: -1
                         enabled: view.selectionMode
-                        onClicked: view.toggleSelected(modelData.id)
+                        onClicked: { root.sounds.buttonClick(); view.toggleSelected(modelData.id) }
                     }
 
                     ColumnLayout {
@@ -321,7 +321,7 @@ Rectangle {
                 font.pixelSize: 14
                 font.weight: Font.Medium
             }
-            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.confirmSelection() }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); view.confirmSelection() } }
         }
     }
 
@@ -363,7 +363,7 @@ Rectangle {
         color: "#00000099"
         z: 60
 
-        MouseArea { anchors.fill: parent; onClicked: { showSettings = false; persistPrefs() } }
+        MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); showSettings = false; persistPrefs() } }
 
         Rectangle {
             width: Math.min(360, parent.width - 40)
@@ -420,7 +420,7 @@ Rectangle {
                                     color: "#fff"
                                     font.pixelSize: modelData.k === "small" ? 13 : (modelData.k === "large" ? 20 : 16)
                                 }
-                                MouseArea { anchors.fill: parent; onClicked: fontSizeKey = modelData.k }
+                                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); fontSizeKey = modelData.k } }
                             }
                         }
                     }
@@ -432,7 +432,7 @@ Rectangle {
                     radius: 10
                     color: "#0f6e56"
                     Text { anchors.centerIn: parent; text: "Done"; color: "#fff"; font.pixelSize: 13 }
-                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { showSettings = false; persistPrefs() } }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); showSettings = false; persistPrefs() } }
                 }
             }
         }

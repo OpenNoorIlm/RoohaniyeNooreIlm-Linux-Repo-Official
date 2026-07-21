@@ -266,7 +266,7 @@ Rectangle {
                 text: "\u2190"
                 color: "#7fd6b4"
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -12; onClicked: { saveCurrentProgress(); audioBackend.stop(); root.goBack() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -12; onClicked: { root.sounds.buttonClick(); saveCurrentProgress(); audioBackend.stop(); root.goBack() } }
             }
 
             Rectangle {
@@ -296,7 +296,7 @@ Rectangle {
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: showSurahPicker = true
+                    onClicked: { root.sounds.buttonClick(); showSurahPicker = true }
                 }
             }
 
@@ -304,7 +304,7 @@ Rectangle {
                 width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2637"; color: "#7fd6b4"; font.pixelSize: 15 }
-                MouseArea { anchors.fill: parent; onClicked: showJuzPicker = true }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); showJuzPicker = true } }
             }
 
             Rectangle {
@@ -314,7 +314,7 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "\u2611"; color: ayahSelectionMode ? "#fff" : "#7fd6b4"; font.pixelSize: 14 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
+                    onClicked: { root.sounds.buttonClick();
                         ayahSelectionMode = !ayahSelectionMode
                         selectedAyahs = []
                     }
@@ -325,7 +325,7 @@ Rectangle {
                 width: 44; height: 44; radius: 22
                 color: "#173832"
                 Text { anchors.centerIn: parent; text: "\u2699"; color: "#7fd6b4"; font.pixelSize: 15 }
-                MouseArea { anchors.fill: parent; onClicked: showSettings = true }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); showSettings = true } }
             }
         }
 
@@ -422,7 +422,7 @@ Rectangle {
                                 }
                                 MouseArea {
                                     anchors.fill: parent
-                                    onClicked: view.toggleVersePlayback(modelData.surah, modelData.ayah)
+                                    onClicked: { root.sounds.buttonClick(); view.toggleVersePlayback(modelData.surah, modelData.ayah) }
                                 }
                             }
                         }
@@ -487,7 +487,7 @@ Rectangle {
                 font.pixelSize: 14
                 font.weight: Font.Medium
             }
-            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.confirmAyahSelection() }
+            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); view.confirmAyahSelection() } }
         }
 
         // ---- MUSHAF (Hafizi) MODE: dense Arabic-only, paginated ----
@@ -553,7 +553,7 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "\u2190 Previous page"; color: "#fff"; font.pixelSize: 13 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
+                    onClicked: { root.sounds.pageFlip();
                         if (currentPage > 1) { currentPage -= 1; loadPage() }
                     }
                 }
@@ -580,6 +580,7 @@ Rectangle {
                     onAccepted: {
                         var p = parseInt(text)
                         if (!isNaN(p) && p >= 1 && p <= quranBackend.totalPages()) {
+                            root.sounds.pageFlip()
                             currentPage = p
                             loadPage()
                         }
@@ -596,7 +597,7 @@ Rectangle {
                 Text { anchors.centerIn: parent; text: "Next page \u2192"; color: "#fff"; font.pixelSize: 13 }
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: {
+                    onClicked: { root.sounds.pageFlip();
                         if (currentPage < quranBackend.totalPages()) { currentPage += 1; loadPage() }
                     }
                 }
@@ -637,7 +638,7 @@ Rectangle {
                     }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: view.toggleVersePlayback(audioBackend.currentSurah, audioBackend.currentAyah)
+                        onClicked: { root.sounds.buttonClick(); view.toggleVersePlayback(audioBackend.currentSurah, audioBackend.currentAyah) }
                     }
                 }
 
@@ -674,14 +675,14 @@ Rectangle {
                         color: audioBackend.loopMode !== 0 ? "#7fd6b4" : "#8fb3a4"
                         font.pixelSize: 14
                     }
-                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: view.cycleLoopMode() }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); view.cycleLoopMode() } }
                 }
 
                 Rectangle {
                     width: 44; height: 44; radius: 22
                     color: "#173832"
                     Text { anchors.centerIn: parent; text: "\uD83C\uDFA4"; color: "#8fb3a4"; font.pixelSize: 13 }
-                    MouseArea { anchors.fill: parent; onClicked: showReciterPicker = true }
+                    MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); showReciterPicker = true } }
                 }
 
                 Rectangle {
@@ -690,7 +691,7 @@ Rectangle {
                     Text { anchors.centerIn: parent; text: "\u2715"; color: "#8fb3a4"; font.pixelSize: 13 }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
+                        onClicked: { root.sounds.buttonClick();
                             audioBackend.stop()
                             audioSessionStarted = false
                         }
@@ -763,7 +764,7 @@ Rectangle {
         color: "#00000099"
         z: 60
 
-        MouseArea { anchors.fill: parent; onClicked: { showSettings = false; persistPrefs() } }
+        MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); showSettings = false; persistPrefs() } }
 
         Rectangle {
             width: Math.min(360, parent.width - 40)
@@ -792,13 +793,13 @@ Rectangle {
                             Layout.fillWidth: true; height: 44; radius: 10
                             color: layoutMode === "reading" ? "#0f6e56" : "#10241f"
                             Text { anchors.centerIn: parent; text: "Reading"; color: "#fff"; font.pixelSize: 12 }
-                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: layoutMode = "reading" }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); layoutMode = "reading" } }
                         }
                         Rectangle {
                             Layout.fillWidth: true; height: 44; radius: 10
                             color: layoutMode === "mushaf" ? "#0f6e56" : "#10241f"
                             Text { anchors.centerIn: parent; text: "Mushaf (Hafizi)"; color: "#fff"; font.pixelSize: 12 }
-                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { layoutMode = "mushaf"; loadPage() } }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); layoutMode = "mushaf"; loadPage() } }
                         }
                     }
                 }
@@ -842,7 +843,7 @@ Rectangle {
                                     color: "#fff"
                                     font.pixelSize: modelData.k === "small" ? 13 : (modelData.k === "large" ? 20 : 16)
                                 }
-                                MouseArea { anchors.fill: parent; onClicked: fontSizeKey = modelData.k }
+                                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); fontSizeKey = modelData.k } }
                             }
                         }
                     }
@@ -854,7 +855,7 @@ Rectangle {
                     radius: 10
                     color: "#0f6e56"
                     Text { anchors.centerIn: parent; text: "Done"; color: "#fff"; font.pixelSize: 13 }
-                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { showSettings = false; persistPrefs() } }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); showSettings = false; persistPrefs() } }
                 }
             }
         }

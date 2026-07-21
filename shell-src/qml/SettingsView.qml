@@ -24,7 +24,7 @@ Rectangle {
                 text: "\u2190"
                 color: root.theme.accent
                 font.pixelSize: 20
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: root.goBack() }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); root.goBack() } }
             }
             Text { text: "Settings"; color: root.theme.text; font.pixelSize: 20; font.weight: Font.Medium; Layout.leftMargin: 12 }
         }
@@ -110,7 +110,7 @@ Rectangle {
                             radius: 10
                             color: "#993c1d"
                             Text { anchors.centerIn: parent; text: "Reset"; color: "#fff"; font.pixelSize: 12 }
-                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: themeBackend.clearBackgroundImage() }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); themeBackend.clearBackgroundImage() } }
                         }
                     }
                     Text {
@@ -301,7 +301,7 @@ Rectangle {
                 radius: 12
                 color: "#3c3489"
                 Text { anchors.centerIn: parent; text: "Restart"; color: "#fff"; font.pixelSize: 14 }
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { powerAction = "restart"; powerDialog.open() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); powerAction = "restart"; powerDialog.open() } }
             }
             Rectangle {
                 Layout.fillWidth: true
@@ -309,7 +309,7 @@ Rectangle {
                 radius: 12
                 color: "#993c1d"
                 Text { anchors.centerIn: parent; text: "Shut down"; color: "#fff"; font.pixelSize: 14 }
-                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { powerAction = "shutdown"; powerDialog.open() } }
+                MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); powerAction = "shutdown"; powerDialog.open() } }
             }
         }
 
@@ -351,7 +351,7 @@ Rectangle {
                         radius: 12
                         color: root.theme.cardAlt
                         Text { anchors.centerIn: parent; text: "Set Up Account"; color: "#fff"; font.pixelSize: 13 }
-                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { accountDialog.isFirstAccount = true; accountDialog.open() } }
+                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); accountDialog.isFirstAccount = true; accountDialog.open() } }
                     }
                 }
 
@@ -381,7 +381,7 @@ Rectangle {
                             radius: 12
                             color: "#173832"
                             Text { anchors.centerIn: parent; text: "Lock Now"; color: root.theme.text; font.pixelSize: 13 }
-                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: authBackend.lockNow() }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); authBackend.lockNow() } }
                         }
                         Rectangle {
                             Layout.fillWidth: true
@@ -389,7 +389,7 @@ Rectangle {
                             radius: 12
                             color: "#173832"
                             Text { anchors.centerIn: parent; text: "Log Out"; color: root.theme.text; font.pixelSize: 13 }
-                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: authBackend.logout() }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); authBackend.logout() } }
                         }
                     }
 
@@ -432,7 +432,7 @@ Rectangle {
                         radius: 12
                         color: "#173832"
                         Text { anchors.centerIn: parent; text: "Change Password"; color: root.theme.text; font.pixelSize: 13 }
-                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { changePassDialog.errorText = ""; oldPassField.text = ""; newPassField.text = ""; changePassDialog.open() } }
+                        MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); changePassDialog.errorText = ""; oldPassField.text = ""; newPassField.text = ""; changePassDialog.open() } }
                     }
 
                     // Admin: manage users
@@ -461,7 +461,7 @@ Rectangle {
                                     MouseArea {
                                         anchors.fill: parent
                                         anchors.margins: -8
-                                        onClicked: { deleteUserDialog.targetUser = modelData.username; deleteUserDialog.errorText = ""; deleteUserDialog.adminPassField.clear(); deleteUserDialog.open() }
+                                        onClicked: { root.sounds.buttonClick(); deleteUserDialog.targetUser = modelData.username; deleteUserDialog.errorText = ""; deleteUserDialog.adminPassField.clear(); deleteUserDialog.open() }
                                     }
                                 }
                             }
@@ -473,7 +473,7 @@ Rectangle {
                             radius: 12
                             color: root.theme.cardAlt
                             Text { anchors.centerIn: parent; text: "Add User"; color: "#fff"; font.pixelSize: 13 }
-                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { accountDialog.isFirstAccount = false; accountDialog.errorText = ""; accountDialog.open() } }
+                            MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); accountDialog.isFirstAccount = false; accountDialog.errorText = ""; accountDialog.open() } }
                         }
                     }
                 }

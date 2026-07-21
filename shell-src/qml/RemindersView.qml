@@ -95,7 +95,7 @@ Rectangle {
                 width: 44; height: 44; radius: 22
                 color: "#0f6e56"
                 Text { anchors.centerIn: parent; text: "+"; color: "#fff"; font.pixelSize: 22 }
-                MouseArea { anchors.fill: parent; onClicked: { root.sounds.click(); view.openAdd("") } }
+                MouseArea { anchors.fill: parent; onClicked: { root.sounds.buttonClick(); view.openAdd("") } }
             }
         }
 
@@ -111,7 +111,7 @@ Rectangle {
                     radius: 15
                     color: "#173832"
                     Text { id: sugText; anchors.centerIn: parent; text: modelData; color: "#9fc7b7"; font.pixelSize: 12 }
-                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.click(); view.openAdd(modelData) } }
+                    MouseArea { anchors.fill: parent; anchors.margins: -10; onClicked: { root.sounds.buttonClick(); view.openAdd(modelData) } }
                 }
             }
         }
@@ -165,7 +165,7 @@ Rectangle {
                         text: "\u270E"
                         color: "#7fd6b4"
                         font.pixelSize: 16
-                        MouseArea { anchors.fill: parent; anchors.margins: -8; onClicked: { root.sounds.click(); view.openEdit(modelData) } }
+                        MouseArea { anchors.fill: parent; anchors.margins: -8; onClicked: { root.sounds.buttonClick(); view.openEdit(modelData) } }
                     }
 
                     Text {
@@ -175,7 +175,7 @@ Rectangle {
                         MouseArea {
                             anchors.fill: parent
                             anchors.margins: -8
-                            onClicked: { root.sounds.click(); reminderBackend.removeReminder(modelData.id); reminderModel.refresh() }
+                            onClicked: { root.sounds.buttonClick(); reminderBackend.removeReminder(modelData.id); reminderModel.refresh() }
                         }
                     }
                 }

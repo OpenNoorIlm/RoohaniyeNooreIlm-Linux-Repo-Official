@@ -177,7 +177,7 @@ Rectangle {
                     id: changeLocMouse
                     anchors.fill: parent
                     onClicked: {
-                        root.sounds.click()
+                        root.sounds.buttonClick()
                         openPicker()
                     }
                 }
@@ -218,7 +218,7 @@ Rectangle {
                         id: quickMouse
                         anchors.fill: parent
                         onClicked: {
-                            root.sounds.click()
+                            root.sounds.buttonClick()
                             if (modelData.cmd === "__DIAG__") {
                                 var out = debugBackend.runDiagnostics()
                                 pushEntry("(full diagnostics)", out)
@@ -341,7 +341,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        root.sounds.click()
+                        root.sounds.buttonClick()
                         runAndShow(cmdInput.text)
                         cmdInput.text = ""
                     }
@@ -426,7 +426,7 @@ Rectangle {
                             id: diskMouse
                             anchors.fill: parent
                             onClicked: {
-                                root.sounds.click()
+                                root.sounds.buttonClick()
                                 chooseDisk(modelData.path)
                             }
                         }
@@ -480,12 +480,12 @@ Rectangle {
                             id: folderMouse
                             anchors.fill: parent
                             onClicked: {
-                                root.sounds.click()
+                                root.sounds.buttonClick()
                                 // single tap: select (toggle), don't navigate
                                 selectedSubfolder = (selectedSubfolder === modelData.path) ? "" : modelData.path
                             }
                             onDoubleClicked: {
-                                root.sounds.click()
+                                root.sounds.buttonClick()
                                 goInto(modelData.path)
                             }
                         }
@@ -531,7 +531,7 @@ Rectangle {
                     radius: 10
                     color: upMouse.pressed ? root.theme.accent : root.theme.cardAlt
                     Text { id: upLabel; anchors.centerIn: parent; text: "\u2190 Up"; color: "#ffffff"; font.pixelSize: 13 }
-                    MouseArea { id: upMouse; anchors.fill: parent; onClicked: { root.sounds.click(); goUp() } }
+                    MouseArea { id: upMouse; anchors.fill: parent; onClicked: { root.sounds.buttonClick(); goUp() } }
                 }
 
                 Rectangle {
@@ -545,7 +545,7 @@ Rectangle {
                         id: newFolderMouse
                         anchors.fill: parent
                         onClicked: {
-                            root.sounds.click()
+                            root.sounds.buttonClick()
                             newFolderPrompt.visible = true
                             newFolderInput.text = ""
                             newFolderInput.forceActiveFocus()
@@ -569,7 +569,7 @@ Rectangle {
                         font.pixelSize: 14
                         font.weight: Font.Medium
                     }
-                    MouseArea { id: saveHereMouse; anchors.fill: parent; onClicked: { root.sounds.click(); confirmFolder() } }
+                    MouseArea { id: saveHereMouse; anchors.fill: parent; onClicked: { root.sounds.buttonClick(); confirmFolder() } }
                 }
             }
 
@@ -611,7 +611,7 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            root.sounds.click()
+                            root.sounds.buttonClick()
                             createNewFolder(newFolderInput.text)
                             newFolderPrompt.visible = false
                         }

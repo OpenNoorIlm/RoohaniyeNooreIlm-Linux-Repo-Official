@@ -478,6 +478,7 @@ Window {
 
     Component.onCompleted: {
         // DB already opened in main.cpp before QML loaded.
+        sounds.bismillah()
     }
 
     // ---- UI sound effects, shared across every loaded screen. Loader
@@ -505,10 +506,21 @@ Window {
         // present) - so this is the correct element for anything that
         // isn't a short raw WAV.
         Audio { id: ringtoneFx; source: "qrc:/assets/audio/ilm_noor_hai_ringtone.mp3"; volume: 0.7 }
+        // Buttons *inside* an app/settings screen (Debug Console rows,
+        // Reminders actions, Settings account/power actions, etc.) use
+        // this distinct click instead of clickFx above, which stays
+        // reserved for opening an app from HomeScreen/Menu. Same MP3
+        // decode note as ringtoneFx above applies here - Audio{}, not
+        // SoundEffect{}.
+        Audio { id: buttonClickFx; source: "qrc:/assets/audio/ButtonClick.mp3"; volume: 0.55 }
+        // Played once at startup (see Component.onCompleted below).
+        Audio { id: bismillahFx; source: "qrc:/assets/audio/bismillah.mp3"; volume: 0.7 }
         function click() { clickFx.play() }
         function select() { selectFx.play() }
         function itemSelecting() { itemSelectingFx.play() }
         function ringtone() { ringtoneFx.stop(); ringtoneFx.play() }
+        function buttonClick() { buttonClickFx.stop(); buttonClickFx.play() }
+        function bismillah() { bismillahFx.stop(); bismillahFx.play() }
     }
     property alias sounds: sounds
 

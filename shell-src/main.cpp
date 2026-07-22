@@ -23,6 +23,7 @@
 #include "themebackend.h"
 #include "authbackend.h"
 #include "debugbackend.h"
+#include "systeminfobackend.h"
 
 int main(int argc, char *argv[])
 {
@@ -96,6 +97,9 @@ int main(int argc, char *argv[])
     // device list to know where to write log files) - declared after it
     // for the same reverse-destruction-order reasoning as DbConnectorBackend.
     DebugBackend debugBackend(&storageBackend);
+    // No cross-backend dependencies - reads /proc, /sys and
+    // QStorageInfo directly, doesn't hold a pointer into anything else.
+    SystemInfoBackend systemInfoBackend;
 
     QQmlApplicationEngine engine;
 
@@ -131,6 +135,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("themeBackend", &themeBackend);
     engine.rootContext()->setContextProperty("authBackend", &authBackend);
     engine.rootContext()->setContextProperty("debugBackend", &debugBackend);
+    engine.rootContext()->setContextProperty("systemInfoBackend", &systemInfoBackend);
     // Fully-automatic background OS updates: checks periodically,
     // downloads+verifies, and stages for install with no user tap
     // needed - see updatebackend.h for the full check->download->apply

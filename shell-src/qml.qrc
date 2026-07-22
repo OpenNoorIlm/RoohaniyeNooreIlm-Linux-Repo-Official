@@ -26,6 +26,9 @@
         <file>qml/DebugConsoleView.qml</file>
         <file>qml/LockScreen.qml</file>
         <file>qml/VirtualKeyboard.qml</file>
+        <file>qml/TopBar.qml</file>
+        <file>qml/QuickSettingsPanel.qml</file>
+        <file>qml/SystemInfoView.qml</file>
         <file>assets/audio/SciFi-MouseClick.wav</file>
         <file>assets/audio/mouseClick.wav</file>
         <file>assets/audio/SelectBtnClick.wav</file>

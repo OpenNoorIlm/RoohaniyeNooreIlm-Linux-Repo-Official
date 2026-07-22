@@ -44,6 +44,8 @@ add_executable(roohaniye-shell
     volumebackend.h
     debugbackend.cpp
     debugbackend.h
+    systeminfobackend.cpp
+    systeminfobackend.h
     qml.qrc
 )
 

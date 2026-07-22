@@ -250,6 +250,7 @@ Window {
                 if (currentView === "installer") return "InstallerWizard.qml"
                 if (currentView === "reminders") return "RemindersView.qml"
                 if (currentView === "debug") return "DebugConsoleView.qml"
+                if (currentView === "systeminfo") return "SystemInfoView.qml"
                 return "HomeScreen.qml"
             }
 
@@ -258,6 +259,25 @@ Window {
             onLoaded: opacity = 1
 
             onSourceChanged: opacity = 0
+        }
+
+        // ---- Top status bar: Ubuntu-style clock + wifi/volume/battery
+        // glance cluster, with a tap-to-open QuickSettingsPanel and a
+        // link into the full SystemInfoView. Hidden only on the splash
+        // screen (nothing to glance at while branding is still showing,
+        // and the clock ticking in during the splash hold looked like a
+        // rendering glitch on real hardware) - visible on every other
+        // screen, including Settings/Installer/DebugConsole, since it's
+        // a system-level surface, not a per-screen widget. Sits above
+        // viewLoader (default z=0) via its own z:3000, and is separate
+        // from the top-level lock screen Loader (z:5000, outside
+        // virtualCanvas entirely) so a locked session still fully
+        // covers it - no ordering conflict between the two.
+        TopBar {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            visible: currentView !== "splash"
         }
 
         Rectangle {

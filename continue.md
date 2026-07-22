@@ -2228,3 +2228,92 @@ these privileged actions will now fail fast and visibly (non-zero exit,
 usually near-instant) instead of hanging - which is the intended trade-off,
 but worth knowing if someone reports "installer/brightness/app center just
 doesn't work at all" on a fresh image: check that sudoers file first.
+
+
+## Top bar / Quick Settings / System Info (new feature, landed)
+
+Added a persistent Ubuntu-style top status bar to the shell:
+
+- **systeminfobackend.h/.cpp** — new backend, registered in CMakeLists.txt
+  and main.cpp as `systemInfoBackend`. Reads CPU model/cores/usage (via
+  `/proc/stat` delta sampling), memory (`/proc/meminfo`), GPU (`lspci`
+  grep for VGA/3D), disk usage (`QStorageInfo`, filtering pseudo-fs like
+  tmpfs/squashfs/snap), battery (`/sys/class/power_supply/BAT*` — no
+  upower dependency, sysfs is always present), uptime, hostname, kernel
+  version. Polls every 2s; disk usage throttled to every 5th tick (~10s)
+  since it changes slowly. `refreshNow()` exposed for on-open refresh.
+- **qml/TopBar.qml** — centered clock (own 1s Timer, deliberately not
+  routed through the 2s backend poll), right-side glance cluster
+  (brightness/wifi/volume/battery icons). Tapping the cluster opens
+  QuickSettingsPanel via a Loader. z:3000, sits inside `virtualCanvas`
+  above `viewLoader`, `visible: currentView !== "splash"`.
+- **qml/QuickSettingsPanel.qml** — dropdown popover: wifi toggle, volume
+  slider + mute, brightness slider, battery glance, link to System Info.
+  Root item spans the full canvas as an invisible tap-outside-to-dismiss
+  scrim; visible card is right-aligned within it.
+- **qml/SystemInfoView.qml** — full detail screen (Overview/CPU/Memory/
+  GPU/Battery/Storage cards), reached via `root.navigateTo("systeminfo")`
+  from the panel's System Info button, wired into `viewLoader`'s route
+  switch in Main.qml and into `qml.qrc`. Calls `systemInfoBackend.refreshNow()`
+  on open.
+
+Notes:
+- wifiBackend has no "connected SSID" property yet, only `wifiEnabled` +
+  `networks()`/`scan()` — the glance icon and panel toggle only reflect
+  radio on/off, not connection state. Follow-up if per-network status is
+  wanted in the bar itself.
+- Battery cards/rows are `visible: systemInfoBackend.batteryPresent` —
+  correctly hidden on this dev box (no battery), untested on real
+  hardware with one present.
+- Build fix needed along the way: `QProcess::start(prog, {})` was
+  ambiguous between overloads — changed to an explicit `QStringList`.
+- Verified: clean rebuild, headless offscreen launch with no QML load
+  errors for the three new files, `git status --porcelain` shows exactly
+  the 8 expected changed/new files (systeminfobackend.h/.cpp,
+  CMakeLists.txt, main.cpp, qml.qrc, Main.qml, TopBar.qml,
+  QuickSettingsPanel.qml, SystemInfoView.qml).
+- Not tested on real touchscreen hardware — the tap-to-open cluster and
+  slider drags in QuickSettingsPanel are new touch surfaces worth a
+  hands-on pass once the separate touch-input bug (still open, see
+  below) is resolved.
+
+## Touch input bug (still OPEN, unresolved)
+
+Reported: screen taps don't register at all on real hardware (not
+touchpad — the actual touchscreen digitizer), spammed taps produce zero
+response anywhere in the UI. Ruled out so far:
+- Qt5 touch QPA plugins (`libqlibinputplugin.so`, `libqevdevtouchplugin.so`)
+  are present in the chroot.
+- `libinput10`, `libmtdev1t64`, `libevdev2`, `udev` are all actually
+  installed transitively (not stripped by `--no-install-recommends`).
+- `roohaniye` user is in the `input` group (both at account creation and
+  via a belt-and-suspenders `usermod -aG input`).
+- `main.cpp` only forces eglfs when no DISPLAY/WAYLAND_DISPLAY is set,
+  doesn't override `QT_QPA_GENERIC_PLUGINS` — Qt should auto-load
+  libinput.
+- MushafReader.qml's PinchArea/MouseArea input handling looks structurally
+  fine.
+
+Not yet ruled out — needs testing ON THE ACTUAL TARGET DEVICE (not this
+dev laptop, which has no touch hardware — a previous attempt accidentally
+ran diagnostics against the dev laptop's own desktop session instead of
+the device, which told us nothing):
+1. `libinput list-devices` — is the touch panel even enumerated?
+2. `libinput debug-events` while tapping — do TOUCH_DOWN events show up
+   at all?
+3. `journalctl -b | grep -i "logind\|seat\|uaccess"` — is `roohaniye`'s
+   session actually getting a `uaccess` ACL tag on `/dev/input/eventX`
+   from logind? The `PAMName=login` + `TTYPath=/dev/tty1` systemd unit
+   setup (direct-to-tty1, no lightdm/xfce4-session) is unusual enough
+   that seat ACL assignment might silently not be happening, even though
+   the `input` group membership is a working fallback for anything that
+   respects plain file permissions.
+4. `libinput-tools` (the CLI) is NOT currently in the package lists —
+   only the `libinput10` library is. Needs `sudo apt install
+   libinput-tools` on the device for #1/#2 above, or add it to
+   `live.list.chroot` for the next ISO build.
+
+Fastest path: SSH into the booted device (`roohaniye@<device-ip>`,
+credentials `roohaniye`/`roohaniye`, openssh-server already enabled in
+the build) while physically tapping the screen, run the three commands
+above, paste output back.

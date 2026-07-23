@@ -279,6 +279,44 @@ if ! chroot "$CHROOT" id roohaniye >/dev/null 2>&1; then
 else
     echo "   roohaniye user already present in chroot"
 fi
+
+# UID 1000 fix - confirmed 2026-07-23 that roohaniye-shell.service was
+# running but taking NO input at all (Tasks: 0 in systemctl status, tiny
+# ~3MB memory footprint - eglfs failing silently very early, not a
+# crash) because roohaniye ended up on uid 1001, not 1000. Root cause:
+# casper's own live-session default account ("ubuntu") is created by the
+# live-build/casper framework itself (NOT this script or the hook
+# script) and always claims uid 1000 first, so plain `useradd` above
+# picks the next free uid (1001) every time. But
+# roohaniye-shell.service hardcodes Environment=XDG_RUNTIME_DIR=/run/
+# user/1000 (matching the `mkdir -p .../run/user/1000` a few lines
+# below) - with the real user at 1001, that runtime dir doesn't exist
+# for the process, silently breaking EGL/DRM/seat access in eglfs with
+# no crash and no useful log output (see build.md Section G's dmesg/
+# libinput diagnostic flow for how this was actually tracked down).
+#
+# Fix: the "ubuntu" account is never used by anything in this project
+# (roohaniye-kiosk.service, the one thing that ran as it, is already
+# disabled above as stale/superseded) - remove it to free uid 1000, then
+# force roohaniye onto uid/gid 1000 explicitly. Idempotent and
+# self-healing: also fixes a roohaniye account baked in at the wrong uid
+# by an earlier flawed build, not just fresh ones.
+if chroot "$CHROOT" id ubuntu >/dev/null 2>&1; then
+    echo "   Removing unused stock 'ubuntu' account to free uid 1000"
+    chroot "$CHROOT" userdel -r ubuntu 2>/dev/null || chroot "$CHROOT" userdel ubuntu
+fi
+ROOHANIYE_UID="$(chroot "$CHROOT" id -u roohaniye)"
+if [ "$ROOHANIYE_UID" != "1000" ]; then
+    echo "   Correcting roohaniye uid/gid $ROOHANIYE_UID -> 1000 (was wrong due to the casper-ubuntu-uid-1000 conflict above)"
+    chroot "$CHROOT" usermod -u 1000 roohaniye
+    chroot "$CHROOT" groupmod -g 1000 roohaniye
+    # Fix ownership of anything the old uid/gid already touched (home dir,
+    # /run/user/<old-uid> if it exists, etc.) before it's gone for good.
+    chroot "$CHROOT" find / -xdev -user "$ROOHANIYE_UID" -exec chown -h roohaniye {} \; 2>/dev/null || true
+    chroot "$CHROOT" find / -xdev -group "$ROOHANIYE_UID" -exec chgrp -h roohaniye {} \; 2>/dev/null || true
+else
+    echo "   roohaniye already at uid/gid 1000 - correct"
+fi
 mkdir -p "$CHROOT/run/user/1000"
 chroot "$CHROOT" chown roohaniye:roohaniye /run/user/1000 2>/dev/null || true
 

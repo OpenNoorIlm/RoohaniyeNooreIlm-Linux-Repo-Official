@@ -4,6 +4,24 @@ This document covers the full workflow for rebuilding the ISO after you edit
 `roohaniye-shell` (the Qt/QML app in `shell-src/`). Keep this file in the
 project root and update it if paths change.
 
+> **⚠️ Read this first:** `live-build/build.sh` (run with `sudo`) is the
+> real, current, day-to-day build path — see Section A. It has grown well
+> beyond a simple squashfs/ISO repack: it also idempotently installs any
+> package the chroot turns out to be missing (`cryptsetup`, `openssh-server`,
+> `udisks2`, `rfkill`/`iw`, `wpasupplicant`, ...), (re)creates the
+> `roohaniye` user/groups if they're ever missing, installs/enables all the
+> project's systemd units, and masks known-bad units
+> (`casper-md5check.service`). **The display stack is also no longer
+> X11/lightdm/openbox** — it's direct `eglfs` on `tty1` via
+> `roohaniye-shell.service`. Sections A–D and the package list in Section E
+> below describe an earlier X11/lightdm architecture and are kept for
+> historical/disaster-recovery reference, but for normal work **just run
+> `build.sh`** and read its own comments (`live-build/build.sh`) for the
+> authoritative, up-to-date list of what a build actually does — the script
+> itself is more current than the prose below it in several places. Section
+> G (bottom of this file) covers packaging custom drivers/firmware, which
+> follows the same idempotent pattern as the script's package installs.
+
 ## Directory layout (reference)
 
 ```
@@ -276,3 +294,110 @@ Also ensure `chroot/etc/casper.conf` has `USERNAME="ubuntu"`, and
 - [ ] Audio plays (test in QEMU with `-audiodev pa ...`, then confirm on real hardware)
 - [ ] Tested on real hardware, not just QEMU, before distributing
 - [ ] ISO copied somewhere safe (this build directory is not a backup)
+
+---
+
+## G. Packaging custom drivers / firmware
+
+This covers adding hardware support (touchscreen firmware, kernel modules,
+udev rules, etc.) that needs to be baked into every future ISO — not a
+one-off fix on a single already-booted device. The pattern below is exactly
+what was used to add broad Silead touchscreen support; follow the same
+shape for anything else.
+
+### Where things live
+
+- **`live-build/config-src/`** — source files that get copied into the
+  chroot at build time. This is a real, git-tracked source directory (see
+  the `.gitignore` note below) — put new driver/firmware files here, never
+  directly in `live-build/chroot/` (that's throwaway build output).
+- **`live-build/config-src/0100-setup-roohaniye.hook.chroot`** — the
+  live-build hook script that runs *inside* the chroot the one time you do
+  a from-scratch `lb build` (see Section E/D). It's also hand-mirrored by
+  the equivalent steps in `build.sh`, since `build.sh` normally refreshes
+  an *existing* chroot rather than bootstrapping a new one — **if you add
+  something to the hook script, add the matching step to `build.sh` too**,
+  or it'll only apply the next time someone does a full from-scratch
+  rebuild, not on normal `sudo bash build.sh` runs.
+- **`live-build/config-src/<name>-firmware/`** — a subdirectory per driver
+  bundle (see the `silead-firmware/` example, ~70 files, one per supported
+  device/panel).
+
+### Steps to add a new firmware/driver bundle
+
+1. **Drop the firmware/driver files into `config-src/`.** Prefer storing
+   the actual files in the repo (`config-src/<name>-firmware/*.fw` etc.)
+   over fetching them at build time — this keeps builds working offline
+   and not dependent on a third-party site being reachable mid-build.
+
+2. **Add the install step to `0100-setup-roohaniye.hook.chroot`** (for
+   from-scratch builds) — copy files to their real destination under
+   `/lib/firmware/<driver>/`, `/lib/modules/...`, `/etc/udev/rules.d/`,
+   etc., whatever the driver in question expects. Comment *why* — which
+   symptom this fixes, what hardware it was diagnosed on, and any
+   filename/path quirks (e.g. some kernels/DMI-quirk revisions request a
+   firmware file under a different name than the vendor's own filename —
+   installing under both names is often the simplest fix rather than
+   tracking exactly which one a given kernel build wants).
+
+3. **Mirror the same install step in `build.sh`**, following its existing
+   idempotent-install pattern (check if it's already present/missing,
+   only act if needed, log what happened) — see the `cryptsetup`/
+   `udisks2`/`rfkill` blocks in `build.sh` for the template to copy.
+
+4. **If a kernel module needs to be forced to load** (rather than relying
+   on auto-bind via ACPI/PCI ID, which is what most drivers do and needs
+   nothing extra), add it to `/etc/modules-load.d/` in the chroot rather
+   than a manual `modprobe` step — that's the standard systemd-native way
+   to guarantee a module loads at every boot.
+
+5. **If a *service* is found to hang boot indefinitely** (as happened with
+   `rsyslog.service` and `apport.service` on this hardware — both stall
+   with no timeout on certain boards) — the fix is `systemctl mask
+   <service>` in both the hook script and `build.sh`, not a driver/firmware
+   fix. Comment why it was masked, since masking is otherwise a stealthy
+   change that's easy to forget the reason for later.
+
+6. **Track it in git.** `live-build/` is gitignored as build output, but
+   `config-src/` is explicitly re-included via a negation pattern in
+   `.gitignore` (`live-build/*` + `!live-build/config-src/`) specifically
+   so source files like driver bundles don't live *only* on the one
+   machine that happened to add them. Run `git status --short
+   --untracked-files=all live-build/config-src/` to confirm new files are
+   actually visible to git before committing.
+
+7. **Test with a real from-scratch chroot boot if possible**, not just
+   `build.sh` against an already-fixed chroot — that's the only way to
+   confirm the hook script (not just `build.sh`'s idempotent patch) is
+   actually correct, since the hook path and the `build.sh` path can
+   silently drift apart otherwise (see the warning at the top of this
+   file about `roohaniye-shell.service` once being missing from a chroot
+   that `build.sh` had been quietly patching around for a while).
+
+### Diagnosing new hardware before packaging a fix
+
+If you're chasing a *new* piece of unsupported hardware (not just
+reapplying a known fix), the general diagnostic flow that worked for the
+touchscreen case:
+
+```bash
+# Is the kernel driver even loaded?
+lsmod | grep -iE "<driver-name>"
+sudo modprobe <driver-name>; echo "exit: $?"
+
+# Does the kernel see the device at all (ACPI-attached devices, e.g. I2C-HID touch controllers)?
+ls /sys/bus/acpi/devices/ | grep -i <expected-ACPI-ID>
+
+# For input devices specifically - is anything registering at the libinput level?
+sudo libinput list-devices
+sudo libinput debug-events   # then physically interact with the hardware
+
+# What's the kernel actually saying about it?
+sudo dmesg | grep -iE "<driver-name>|<device-name>"
+```
+
+A `Direct firmware load for <path> failed with error -2` in `dmesg` means
+the driver bound and is talking to the chip, but the firmware file it's
+asking for (check the exact path in that log line) isn't present — that's
+almost always a firmware-packaging problem like this section covers, not a
+deeper driver bug.

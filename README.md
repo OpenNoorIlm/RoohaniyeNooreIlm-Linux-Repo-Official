@@ -17,13 +17,23 @@ It boots straight into its own custom shell (built with Qt/QML), not a general-p
 - **Qibla direction** finder
 - **Reminders** — for prayer, reading goals, etc.
 - **App Center** — for browsing/installing additional apps within the OS
-- **Installer Wizard** — guided setup when first installing the OS
+- **Installer Wizard** — guided setup when first installing the OS, including disk erase/clone and internal-disk detection
 - **Virtual Keyboard** — built in for touch-screen devices
 - **Lock Screen**
 - **Light/Dark theming**
-- **Database Connector** — import your own `.db` content packs
+- **Database Connector** — import your own `.db` content packs (USB/SD hot-swap, JSON-to-SQLite conversion, schema matching)
+- **Top Bar & Quick Settings** — always-visible clock, wifi/volume/brightness glance icons, and a tap-out dismissible quick-settings panel
+- **System Info screen** — live CPU, memory, GPU, disk, battery, uptime, hostname, and kernel details
+- **Debug Console** (tty2, or from within the app) — run diagnostic commands, browse/mount disks, and save logs to a USB stick or the internal disk; ships with a fallback command list that's also overridable from a USB stick's `commands.txt`
+- **OTA auto-update** — background update checker/applier (`UpdateBackend`) with a systemd path-unit watcher, so updates can be dropped in and applied without a full reflash
+- **SSH access** for remote debugging (enabled by default on live/installed boots — see [Security note](#security-note) below)
+- **Broad touchscreen hardware support** — the kernel's built-in `silead.ko` driver is bundled with firmware for ~70 common Silead-chip touch panels (the most common chip family in budget x86 tablets/2-in-1s), so touch works out of the box on a wide range of hardware without per-device setup
 
-Designed to run on **all hardware** — from modern laptops down to old, low-spec machines (tested successfully on a 2GB RAM / DDR3L tablet).
+Designed to run on **all (x86_64) hardware** — from modern laptops down to old, low-spec machines and budget tablets (tested successfully on a 2GB RAM / DDR3L tablet, and on an Intel Atom x5-Z8300 tablet with a Silead touchscreen).
+
+### Security note
+
+The live/installed image ships with a fixed default account (`roohaniye` / `roohaniye`) with passwordless `sudo`, and `openssh-server` enabled by default for remote debugging. This is a deliberate tradeoff for a kiosk appliance device where GUI/touch debugging isn't always possible — but it means **anyone on the same network can SSH in with the default credentials**. If you're deploying this somewhere untrusted, change the password and/or disable `ssh`/`sudo NOPASSWD` after first boot.
 
 ---
 
@@ -70,8 +80,9 @@ If you want to modify the shell or rebuild the OS yourself, see **[build.md](bui
 
 - **Shell**: Qt5 / QML (`shell-src/`) — a custom kiosk application, not a general desktop environment
 - **Base OS**: Ubuntu 24.04 LTS (Noble Numbat), built with `live-build` + `casper`
-- **Display**: X11 + `openbox` (minimal window manager, enforces fullscreen kiosk mode) + `lightdm` (autologin, no login screen)
+- **Display**: direct `eglfs` (no X11, no window manager, no display manager) — `roohaniye-shell` launches straight on `tty1` via a dedicated systemd service (`roohaniye-shell.service`) with autologin, so there's no desktop session in between at all
 - **Audio**: PulseAudio over ALSA
+- **Networking**: NetworkManager + wpasupplicant, with SSH enabled by default for remote debugging (see [Security note](#security-note))
 
 ### Repository layout
 

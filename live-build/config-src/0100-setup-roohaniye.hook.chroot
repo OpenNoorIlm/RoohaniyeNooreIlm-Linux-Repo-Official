@@ -37,6 +37,21 @@ systemctl mask rsyslog.service
 # enough if we ever need it. Masking prevents the same indefinite stall.
 systemctl mask apport.service
 
+# accounts-daemon (AccountsService) - THIRD service now confirmed to
+# hang boot indefinitely on this hardware (after rsyslog, apport), same
+# symptom (stalls with no timeout). It's normally D-Bus-activated and
+# only matters for desktop-session user-account UI (login screens, user
+# icons) - not used by anything in this kiosk (no display manager, no
+# login screen; roohaniye-shell has its own AuthBackend, see
+# continue.md). Masking is the same fix as the other two. NOTE: three
+# unrelated services hanging the same way is suspicious - if a FOURTH
+# one shows up, stop masking individually and instead run
+# `systemd-analyze blame` on a boot that DOES succeed to look for a
+# systemic cause (e.g. slow/degraded I/O on the writable overlay, or a
+# broken D-Bus/polkit dependency shared by all of them) rather than
+# continuing to whack-a-mole each new one.
+systemctl mask accounts-daemon.service
+
 # Silead touchscreens - the silead.ko driver is already in the mainline
 # kernel and auto-binds via ACPI on any device with a matching Silead
 # touch chip, but it refuses to probe without a firmware blob matching

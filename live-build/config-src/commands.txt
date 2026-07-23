@@ -1,0 +1,35 @@
+# RoohaniyeNoorIlm Debug Console - command list
+# Format: one command per line, as "Label | actual shell command"
+# Lines starting with # are comments/ignored. Blank lines ignored.
+# Edit this file on your USB stick (place it at the ROOT of the USB
+# drive, named exactly commands.txt) to override the built-in list
+# without rebuilding the ISO - the app checks the USB stick first.
+
+Kernel version | uname -a
+WiFi/BT kernel modules loaded | lsmod | grep -iE "80211|rtl|brcm|ath|iwl|mwifiex|bluetooth|mt76" || echo "(none loaded)"
+NetworkManager device status | nmcli device status
+NetworkManager wifi scan | nmcli device wifi list
+Radio soft/hard block status | rfkill list
+Network interfaces | ip link show
+Block devices / filesystems | lsblk -f
+PCI network controllers | lspci -k | grep -iA3 network
+USB devices | lsusb
+Available wifi kernel modules on disk | find /lib/modules/$(uname -r) -iname "*wifi*" -o -iname "*80211*" -o -iname "*rtl*" -o -iname "*brcm*" -o -iname "*ath*" -o -iname "*iwl*" -o -iname "*mt76*" 2>/dev/null
+Firmware files present (mt76/rtl) | find /lib/firmware -iname "*mt76*" -o -iname "*rtl*" 2>/dev/null
+SSH service status | systemctl status ssh --no-pager
+Recent kernel log (last 60 lines) | sudo dmesg | tail -60
+
+# --- WiFi deep-dive (needs root - relies on roohaniye-nopasswd) ---
+iw: list wifi radios/interfaces | sudo iw dev
+iw: regulatory domain | sudo iw reg get
+iw: scan for networks (replace iface if needed) | sudo iw dev wlp2s0 scan 2>&1 | head -80 || sudo iw dev wlan0 scan 2>&1 | head -80
+Kernel log filtered for wifi/mt76/firmware/regdom | sudo dmesg | grep -iE "mt76|mt7921|firmware|wifi|regdom"
+
+# --- Touch/input deep-dive ---
+All input devices (kernel view) | cat /proc/bus/input/devices
+Input device nodes + permissions | ls -la /dev/input/event*
+udev info for every input event node | for f in /dev/input/event*; do echo "== $f =="; sudo udevadm info --query=all --name="$f" | grep -iE "ID_INPUT|NAME="; done
+Is roohaniye-shell.service running right now? | systemctl status roohaniye-shell --no-pager
+Kiosk service conflict check (shell should be active, kiosk should be inactive/disabled) | systemctl status roohaniye-shell roohaniye-kiosk --no-pager
+roohaniye-shell.service recent journal | sudo journalctl -u roohaniye-shell -n 80 --no-pager
+Groups for roohaniye | groups roohaniye

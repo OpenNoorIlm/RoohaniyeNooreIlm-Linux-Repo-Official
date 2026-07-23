@@ -1,0 +1,20 @@
+# Passwordless sudo for the kiosk account.
+#
+# Why: DebugBackend::runCommand() (shell-src/debugbackend.cpp) runs
+# commands via QProcess with no controlling TTY. `sudo` can't prompt for
+# a password in that context - it just fails immediately with "a
+# terminal is required to read the password" instead of asking. Most of
+# the useful wifi/touch/hardware diagnostics (rfkill, iw, dmesg, lspci,
+# lsusb, udevadm) need root, so without this, half of commands.txt is
+# unusable from the in-app Debug Console.
+#
+# Scope: full NOPASSWD, not a per-command allowlist. This matches the
+# security posture already established for this account elsewhere (see
+# 0100-setup-roohaniye.hook.chroot: "default password is intentionally
+# simple/known... this account has no direct login prompt on a real
+# boot"). roohaniye is not an admin/security boundary account - the
+# app's own AuthBackend is the real user-facing lock (see continue.md).
+# A per-command allowlist would also just break the next time a new
+# diagnostic command is added to commands.txt or typed ad hoc into the
+# console's free-text input field.
+roohaniye ALL=(ALL) NOPASSWD: ALL

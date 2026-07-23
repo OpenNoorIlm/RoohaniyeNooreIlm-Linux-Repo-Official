@@ -1,0 +1,84 @@
+# Runtime package list for the RoohaniyeNooreIlm live/installed image.
+# Derived directly from `ldd` on the real compiled roohaniye-shell binary
+# plus the exact libqt5* package names already confirmed installed on
+# the dev machine (see live-build/README.md). Kept deliberately minimal
+# on purpose - no desktop environment, no browser, no dev toolchain.
+
+# --- Core system ---
+systemd
+systemd-sysv
+dbus
+udev
+kmod
+
+# --- Qt5 runtime (matches what roohaniye-shell actually links against) ---
+libqt5core5t64
+libqt5gui5t64
+libqt5network5t64
+libqt5qml5
+libqt5qmlmodels5
+libqt5quick5
+libqt5quickcontrols2-5
+libqt5quicktemplates2-5
+libqt5sql5-sqlite
+libqt5multimedia5
+libqt5multimedia5-plugins
+libqt5multimediagsttools5
+qml-module-qtquick2
+qml-module-qtquick-layouts
+qml-module-qtquick-controls2
+qml-module-qtquick-window2
+qml-module-qtmultimedia
+qml-module-qtgraphicaleffects
+
+# --- GStreamer backend for QtMultimedia (mp3 decode - confirmed needed
+# for the ringtone/recitation audio, see continue.md's "UI sound
+# effects" section) ---
+gstreamer1.0-plugins-good
+gstreamer1.0-plugins-bad
+gstreamer1.0-plugins-ugly
+gstreamer1.0-libav
+
+# --- eglfs / KMS framebuffer backend (main.cpp forces eglfs unless
+# QT_QPA_PLATFORM is overridden - this is what makes the shell draw
+# straight to the screen with no X server/window manager on real
+# target hardware; NOT exercised by xcb-mode dev testing, so this is
+# the single most likely gap on first real boot - see README.md) ---
+libgbm1
+libdrm2
+libegl1
+libgles2
+mesa-vulkan-drivers
+libqt5gui5t64
+
+# --- Backends this app shells out to (nmcli, wpctl, pkexec, systemctl,
+# lsblk/findmnt for the installer, udisksctl for the Debug Console's
+# internal-disk retry mount + USB fallback - see debugbackend.cpp) ---
+network-manager
+pipewire
+pipewire-pulse
+wireplumber
+pipewire-audio-client-libraries
+policykit-1
+udisks2
+util-linux
+sudo
+
+# --- Bootloader, for the installer's own grub-install step once this
+# live image is used to install to a real disk ---
+grub-efi-amd64
+grub-efi-amd64-bin
+grub-pc-bin
+grub-common
+os-prober
+
+# --- Networking basics (wifi firmware for common chipsets - trim/adjust
+# once real target hardware is known) ---
+linux-firmware
+wpasupplicant
+rfkill
+iw
+
+# --- Misc utilities the shell/scripts rely on ---
+rsync
+ca-certificates

@@ -1,0 +1,23 @@
+[Unit]
+Description=RoohaniyeNooreIlm kiosk shell
+After=systemd-user-sessions.service getty@tty1.service
+Conflicts=getty@tty1.service
+
+[Service]
+User=roohaniye
+Group=roohaniye
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal+console
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/opt/roohaniye/bin/roohaniye-shell
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical.target

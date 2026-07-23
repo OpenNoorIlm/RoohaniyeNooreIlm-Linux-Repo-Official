@@ -1,0 +1,30 @@
+[Unit]
+Description=Mount deviceA's real internal disk (for Debug Console log fallback)
+DefaultDependencies=no
+Before=roohaniye-shell.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/mkdir -p /mnt/internal-disk
+ExecStart=/bin/mount -U 53001e86-aaab-4485-a7f9-61865a52f2c9 /mnt/internal-disk
+# The app (DebugBackend) runs as the unprivileged roohaniye user, not
+# root - it can see this mount but can't create anything in it (this is
+# literally deviceA's real root filesystem partition, top-level owned
+# root:root). Pre-create a fixed, always-writable folder here so the
+# app's fallback chain (see ensureLogFile() in debugbackend.cpp) can
+# always write to it without ever needing elevated permissions at
+# runtime. Lands as /roohaniye-debug-logs at the root of the real
+# filesystem once you reboot back into the normal OS - not under any
+# particular user's home dir, specifically to sidestep the uid/ownership
+# mismatch that broke the old /home/bismillah/... fallback path.
+ExecStart=/bin/mkdir -p /mnt/internal-disk/roohaniye-debug-logs
+ExecStart=/bin/chmod 777 /mnt/internal-disk/roohaniye-debug-logs
+# nofail behavior: if the UUID isn't present (different hardware, e.g.
+# deviceB), this unit just fails quietly and the app's own fallback
+# chain (USB -> this mount -> /home/.../logsDoNotTouch -> /tmp) moves on.
+SuccessExitStatus=0 1 32
+
+[Install]
+WantedBy=graphical.target

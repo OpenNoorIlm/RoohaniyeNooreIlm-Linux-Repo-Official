@@ -1,0 +1,6 @@
+# Auto-launch the debug console on tty2's autologin, and only there -
+# never on tty1 (that's the kiosk GUI's own login) and never over SSH
+# (SSH sets SSH_CONNECTION; agetty on a real VT does not).
+if [ -z "${SSH_CONNECTION:-}" ] && [ "$(tty 2>/dev/null)" = "/dev/tty2" ]; then
+    /usr/local/bin/debug-console
+fi

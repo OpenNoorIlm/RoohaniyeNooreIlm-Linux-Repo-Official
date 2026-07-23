@@ -1,0 +1,20 @@
+[Unit]
+Description=Unblock all rfkill devices (WiFi/Bluetooth) before the kiosk shell starts
+DefaultDependencies=no
+Before=roohaniye-shell.service
+After=systemd-udevd.service
+
+[Service]
+Type=oneshot
+# Some laptops (this dev's IdeaPad included) persist a software rfkill
+# soft-block across boots via systemd-rfkill's saved state, or default to
+# blocked until explicitly unblocked once on first boot. NetworkManager
+# then reports the wifi device as "unavailable" even though the driver
+# and firmware are loaded correctly (see debug-console diagnostics: mac80211/
+# cfg80211/mt76 modules loaded fine, nmcli just shows the device unavailable).
+# Idempotent and harmless if nothing is actually blocked.
+ExecStart=/usr/sbin/rfkill unblock all
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

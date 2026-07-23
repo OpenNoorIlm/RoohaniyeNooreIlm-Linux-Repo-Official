@@ -1,5 +1,8 @@
 # --- Build output — regenerate via build.md, never commit ---
-live-build/
+# (config-src/ is source, not build output - kept out of the blanket
+# ignore below via the negation pattern so it's actually tracked)
+live-build/*
+!live-build/config-src/
 *.iso
 
 # --- Large / stale data, never commit ---

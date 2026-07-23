@@ -1,0 +1,67 @@
+#!/bin/sh
+# Runs INSIDE the chroot during the live-build build, as root.
+set -e
+
+# Dedicated non-admin user the kiosk shell runs as (uid 1000, matches
+# roohaniye-shell.service's XDG_RUNTIME_DIR=/run/user/1000). Default
+# password is intentionally simple/known - this account has no direct
+# login prompt on a real boot (autologin straight to the shell via the
+# service unit's PAMName=login), and the app's OWN AuthBackend (see
+# continue.md's "User accounts / login system") is the real
+# user-facing lock, not this Linux account.
+useradd -m -s /bin/bash -G video,audio,plugdev,netdev,input roohaniye
+echo "roohaniye:roohaniye" | chpasswd
+
+mkdir -p /run/user/1000
+chown roohaniye:roohaniye /run/user/1000
+
+# Passwordless sudo - see config-src/roohaniye-nopasswd for why.
+cp "$(dirname "$0")/roohaniye-nopasswd" /etc/sudoers.d/roohaniye-nopasswd
+chmod 0440 /etc/sudoers.d/roohaniye-nopasswd
+visudo -cf /etc/sudoers.d/roohaniye-nopasswd
+
+systemctl enable roohaniye-shell.service
+systemctl enable NetworkManager
+systemctl enable pipewire.service pipewire-pulse.service wireplumber.service 2>/dev/null || true
+systemctl set-default graphical.target
+
+# rsyslog was hanging boot indefinitely on real hardware (stalls at
+# "rsyslogs.service - System logging Service", never times out). Kiosk
+# doesn't need syslog; journald alone is enough. Masking prevents it
+# from ever starting instead of just disabling it.
+systemctl mask rsyslog.service
+
+# apport (crash reporting) hangs boot the same way on this hardware -
+# likely no proper crash-dump storage configured on a stripped kiosk
+# image. Not needed for an appliance device; journald crash info is
+# enough if we ever need it. Masking prevents the same indefinite stall.
+systemctl mask apport.service
+
+# Silead touchscreens - the silead.ko driver is already in the mainline
+# kernel and auto-binds via ACPI on any device with a matching Silead
+# touch chip, but it refuses to probe without a firmware blob matching
+# what request_firmware() asks for. Silead chips carry NO onboard
+# calibration - the .fw file IS the panel calibration, one per
+# device/panel combo, so there's no single "generic" blob that works
+# everywhere. What we CAN do generically: ship the full set of ~70
+# community-extracted firmware files (github.com/onitake/gsl-firmware)
+# covering the common budget x86 tablets/2-in-1s that use this chip
+# family (this hardware included: MSSL1680:00 / GlobalSpace SoLT IVW
+# 11.6", chip ID 0x80360000) - so any of those models works out of the
+# box without repeating this chase. Installing under BOTH the DMI-quirk
+# filename AND the bare ACPI-ID name (mssl1680.fw) for THIS unit's chip
+# covers whichever one a given kernel build requests; the rest of the
+# set is there for other Silead-chip devices this image might run on.
+# Baked in from config-src (not fetched at build time) so it works
+# offline and isn't dependent on GitHub being reachable mid-build.
+#
+# Goodix and ELAN - the other two common touch-chip families in this
+# device class - are NOT included here because they don't need an
+# external firmware blob at all (calibration lives on the panel's own
+# flash); their kernel drivers (goodix_ts, elants_i2c) are already
+# present in the standard Ubuntu kernel and bind automatically. Nothing
+# extra to bundle for those.
+mkdir -p /lib/firmware/silead
+cp "$(dirname "$0")/silead-firmware/"*.fw /lib/firmware/silead/
+cp /lib/firmware/silead/gsl1680-globalspace-solt-ivw116.fw \
+   /lib/firmware/silead/mssl1680.fw

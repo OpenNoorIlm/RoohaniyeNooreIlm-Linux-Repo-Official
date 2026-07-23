@@ -1,0 +1,46 @@
+[Unit]
+Description=Force NetworkManager WiFi radio on + dump NM state for debugging
+# Needs the internal disk's writable debug-logs folder to exist (see
+# mount-internal-disk.service) and NetworkManager to actually be up before
+# any nmcli call means anything.
+After=NetworkManager.service mount-internal-disk.service
+Wants=NetworkManager.service mount-internal-disk.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Everything in one ExecStart so it's one atomic dump - captures NM's
+# on-disk persisted radio-switch state (WIRELESS_ENABLED in
+# NetworkManager.state, a DIFFERENT switch than kernel rfkill - this is
+# the thing that produces "unavailable" in nmcli even when rfkill and the
+# driver/firmware are completely fine), NetworkManager.conf + conf.d (in
+# case a rule marks the device unmanaged), then forces the radio on
+# regardless of what it finds, then re-checks. Writes to a world-readable
+# file inside the pre-created 777 folder so it's readable from the host
+# after reboot with no sudo needed on either side.
+ExecStart=/bin/sh -c '\
+  out=/mnt/internal-disk/roohaniye-debug-logs/nm-boot-diagnostic.txt; \
+  { \
+    echo "=== date ==="; date; \
+    echo "=== nmcli radio wifi (before) ==="; nmcli radio wifi 2>&1; \
+    echo "=== NetworkManager.state (before) ==="; cat /var/lib/NetworkManager/NetworkManager.state 2>&1; \
+    echo "=== NetworkManager.conf ==="; cat /etc/NetworkManager/NetworkManager.conf 2>&1; \
+    echo "=== conf.d ==="; for f in /etc/NetworkManager/conf.d/*; do echo "--- $f ---"; cat "$f" 2>&1; done; \
+    echo "=== rfkill (kernel-level, for comparison) ==="; rfkill list 2>&1; \
+    echo "=== forcing NM radio on ==="; nmcli radio wifi on 2>&1; sleep 3; \
+    echo "=== nmcli radio wifi (after) ==="; nmcli radio wifi 2>&1; \
+    echo "=== nmcli device status (after) ==="; nmcli device status 2>&1; \
+    echo "=== nmcli -f GENERAL device show wlp2s0 (after) ==="; nmcli -f GENERAL device show wlp2s0 2>&1; \
+    echo "=== wpa_supplicant process ==="; pgrep -a wpa_supplicant 2>&1 || echo "(not running)"; \
+    echo "=== wpa_supplicant dbus service file ==="; cat /usr/share/dbus-1/system-services/fi.w1.wpa_supplicant1.service 2>&1; \
+    echo "=== wpa_supplicant binary present ==="; command -v wpa_supplicant 2>&1; ls -la /sbin/wpa_supplicant /usr/sbin/wpa_supplicant 2>&1; \
+    echo "=== busctl check for wpa_supplicant on system bus ==="; busctl status fi.w1.wpa_supplicant1 2>&1; \
+    echo "=== dbus system bus alive ==="; systemctl status dbus --no-pager 2>&1 | head -10; \
+    echo "=== NetworkManager journal (supplicant/wlp2s0/wifi lines) ==="; journalctl -u NetworkManager -b --no-pager 2>&1 | grep -iE "supplicant|wlp2s0|wifi|device state" | tail -80; \
+  } > "$out" 2>&1; \
+  chmod 666 "$out" 2>/dev/null; \
+  true'
+SuccessExitStatus=0 1
+
+[Install]
+WantedBy=graphical.target
